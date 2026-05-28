@@ -1,0 +1,197 @@
+package com.example.BarberiaLaClasica.controller;
+
+import com.example.BarberiaLaClasica.service.CitaService;
+import com.example.BarberiaLaClasica.repository.ServicioRepository;
+import com.example.BarberiaLaClasica.repository.BarberoRepository;
+import com.example.BarberiaLaClasica.repository.CitaRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpSession;
+import java.security.Principal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.*;
+
+@Controller
+public class CitaReservaController {
+
+    @Autowired
+    private ServicioRepository servicioRepository;
+    @Autowired
+    private BarberoRepository barberoRepository;
+    @Autowired
+    private CitaService citaService;
+    @Autowired
+    private CitaRepository citaRepository;
+    // ─────────────────────────────────────────────────────────────────
+    // PASO 1-3: Asistente público (sin login requerido)
+    // ─────────────────────────────────────────────────────────────────
+
+    @GetMapping("/reservar")
+    public String verAsistenteReserva(Model model) {
+        model.addAttribute("servicios", servicioRepository.findByEstado(1));
+        model.addAttribute("barberos", barberoRepository.findByEstado(1));
+        return "reserva/reservar-pasos";
+    }
+
+    @GetMapping("/api/citas/horas-disponibles")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> horasDisponibles(
+            @RequestParam Long barberoId,
+            @RequestParam String fecha) {
+
+        LocalDate fechaDate = LocalDate.parse(fecha);
+
+        List<Object[]> filas = citaRepository
+                .findHorasConEstadoPorBarberoYFecha(barberoId, fechaDate);
+
+        Map<LocalTime, Integer> horaEstado = new HashMap<>();
+        for (Object[] fila : filas) {
+            LocalTime hora = (LocalTime) fila[0];
+            Integer estado = ((Number) fila[1]).intValue();
+            horaEstado.merge(hora, estado, (existente, nuevo) -> nuevo == 2 ? nuevo : existente);
+        }
+
+        List<Map<String, Object>> slots = new ArrayList<>();
+        LocalTime hora = LocalTime.of(9, 0);
+        LocalTime cierre = LocalTime.of(19, 0);
+
+        while (hora.isBefore(cierre)) {
+            Map<String, Object> slot = new HashMap<>();
+            slot.put("hora", hora.toString());
+
+            if (!horaEstado.containsKey(hora)) {
+                slot.put("disponible", true);
+                slot.put("estadoOcupacion", null);
+            } else {
+                slot.put("disponible", false);
+                slot.put("estadoOcupacion", horaEstado.get(hora) == 1 ? "pendiente" : "confirmada");
+            }
+
+            slots.add(slot);
+            hora = hora.plusMinutes(30);
+        }
+
+        return ResponseEntity.ok(Map.of("slots", slots));
+    }
+
+    // API: Guarda la pre-reserva en sesión y verifica si requiere login
+    @PostMapping("/api/citas/pre-reserva")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> preReserva(
+            @RequestBody Map<String, Object> datos,
+            HttpSession session,
+            Principal principal) {
+
+        session.setAttribute("preCita_servicioId", datos.get("servicioId"));
+        session.setAttribute("preCita_barberoId", datos.get("barberoId"));
+        session.setAttribute("preCita_fecha", datos.get("fecha"));
+        session.setAttribute("preCita_hora", datos.get("hora"));
+
+        Map<String, Object> resp = new HashMap<>();
+        if (principal == null) {
+            resp.put("requiereAutenticacion", true);
+        } else {
+            resp.put("requiereAutenticacion", false);
+            resp.put("redireccion", "/cliente/reserva/pago");
+        }
+        return ResponseEntity.ok(resp);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // PASO 4: Pago con Yape (requiere login)
+    // ─────────────────────────────────────────────────────────────────
+
+    @GetMapping("/cliente/reserva/pago")
+    public String pantallaPago(HttpSession session, Model model, Principal principal) {
+        if (principal == null)
+            return "redirect:/cliente/login";
+
+        // Recupera datos de la sesión
+        Long servicioId = toLong(session.getAttribute("preCita_servicioId"));
+        Long barberoId = toLong(session.getAttribute("preCita_barberoId"));
+
+        if (servicioId == null || barberoId == null)
+            return "redirect:/reservar";
+
+        // Carga los nombres/precios para mostrar en el resumen
+        servicioRepository.findById(servicioId).ifPresent(s -> {
+            model.addAttribute("servicio", s);
+        });
+        barberoRepository.findById(barberoId).ifPresent(b -> {
+            model.addAttribute("barbero", b);
+        });
+
+        model.addAttribute("fecha", session.getAttribute("preCita_fecha"));
+        model.addAttribute("hora", session.getAttribute("preCita_hora"));
+        model.addAttribute("servicioId", servicioId);
+        model.addAttribute("barberoId", barberoId);
+
+        return "reserva/reserva-pago";
+    }
+
+    // API: Confirma la reserva con el comprobante de pago
+    @PostMapping("/cliente/reserva/confirmar")
+    public String confirmarReserva(
+            @RequestParam Long servicioId,
+            @RequestParam Long barberoId,
+            @RequestParam String fecha,
+            @RequestParam String hora,
+            @RequestParam("comprobante") MultipartFile comprobante,
+            HttpSession session,
+            Principal principal,
+            Model model) {
+
+        if (principal == null)
+            return "redirect:/cliente/login";
+
+        try {
+            citaService.confirmarReserva(
+                    principal.getName(), // correo del cliente autenticado
+                    servicioId, barberoId, fecha, hora, comprobante);
+            // Limpia la sesión
+            session.removeAttribute("preCita_servicioId");
+            session.removeAttribute("preCita_barberoId");
+            session.removeAttribute("preCita_fecha");
+            session.removeAttribute("preCita_hora");
+
+            return "redirect:/cliente/mis-citas?exito=true";
+
+        } catch (Exception e) {
+            model.addAttribute("error", e.getMessage());
+            return "reserva/reserva-pago";
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Historial de citas del cliente
+    // ─────────────────────────────────────────────────────────────────
+
+    @GetMapping("/cliente/mis-citas")
+    public String misCitas(Model model, Principal principal) {
+        if (principal == null)
+            return "redirect:/cliente/login";
+        model.addAttribute("citas", citaService.obtenerHistorialCliente(principal.getName()));
+        return "cliente/mis-citas";
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Secretario: gestión de citas
+    // ─────────────────────────────────────────────────────────────────
+
+    // Utilidad para convertir Object a Long de forma segura
+    private Long toLong(Object val) {
+        if (val == null)
+            return null;
+        try {
+            return Long.parseLong(val.toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:fragment="head_comun">
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/admin-style.css}">
+</head>
+
+<body>
+    <div th:fragment="sidebar_menu(activePage)" class="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+                <i class="fa-solid fa-scissors fa-lg"></i>
+                <h4 class="mb-0">Barberia "La Clasica"</h4>
+            </div>
+            <small class="text-white-50 d-block text-center mt-1" th:text="${#strings.replace(
+                       #strings.replace(
+                           #authentication.principal.authorities[0].authority,
+                           'ROLE_', ''),
+                       '_', ' ')}">
+            </small>
+        </div>
+
+        <nav class="mt-4">
+
+            <!-- DASHBOARD -->
+            <a th:href="${#authorization.expression('hasRole(''ADMINISTRADOR'')') ? '/admin/dashboard' : '/secretario/dashboard'}"
+                class="nav-link" th:classappend="${activePage == 'dashboard' ? ' active' : ''}">
+                <i class="fa-solid fa-house"></i> Inicio
+            </a>
+
+            <!-- USUARIOS -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_USUARIOS'')')}" href="/admin/usuarios"
+                class="nav-link" th:classappend="${activePage == 'usuarios' ? ' active' : ''}">
+                <i class="fa-solid fa-users-gear"></i> Usuarios
+            </a>
+
+            <!-- CLIENTES -->
+            <a th:href="${#authorization.expression('hasRole(''ROLE_ADMINISTRADOR'')')} ? '/admin/cliente' : '/secretario/cliente'"
+                class="nav-link">
+                <i class="fa-solid fa-users me-2"></i> Clientes
+            </a>
+
+            <!-- BARBEROS -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_USUARIOS'')')}" href="/admin/barberos"
+                class="nav-link" th:classappend="${activePage == 'barberos' ? ' active' : ''}">
+                <i class="fa-solid fa-cut"></i> Barberos
+            </a>
+
+            <!-- SERVICIOS/PLANES -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_SERVICIOS'')')}" href="/admin/servicios"
+                class="nav-link" th:classappend="${activePage == 'servicios' ? ' active' : ''}">
+                <i class="fa-solid fa-list-check"></i> Planes y Servicios
+            </a>
+
+            <!-- CITAS -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_CITAS'')')}"
+                th:href="${#authorization.expression('hasRole(''SECRETARIO'')') ? '/secretario/citas' : '/admin/citas'}"
+                class="nav-link" th:classappend="${activePage == 'citas' ? ' active' : ''}">
+                <i class="fa-solid fa-calendar-check"></i> Citas
+            </a>
+
+            <!-- PRODUCTOS -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_PRODUCTOS'')')}" href="/admin/productos"
+                class="nav-link" th:classappend="${activePage == 'productos' ? ' active' : ''}">
+                <i class="fa-solid fa-boxes-stacked"></i> Productos
+            </a>
+            <!-- CATEGORÍAS -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_CATEGORIAS'')')}" href="/admin/categorias"
+                class="nav-link" th:classappend="${activePage == 'categorias' ? ' active' : ''}">
+                <i class="fa-solid fa-folder-tree"></i> Categorías
+            </a>
+
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_PROVEDORES'')')}" href="/admin/proveedores"
+                class="nav-link" th:classappend="${activePage == 'proveedores' ? ' active' : ''}">
+                <i class="fa-solid fa-truck-fast"></i> Proveedores
+            </a>
+
+            
+            <!-- REPORTES -->
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_REPORTES'')')}" href="/admin/reportes"
+                class="nav-link" th:classappend="${activePage == 'reportes' ? ' active' : ''}">
+                <i class="fa-solid fa-chart-line"></i> Reportes
+            </a>
+            <a th:href="@{/secretario/recepcion}" sec:authorize="hasRole('SECRETARIO')"
+    class="nav-link" th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
+    <i class="fa-solid fa-chair"></i> Recepción Sillas
+</a>
+            <!-- CONFIGURAR ROLES -->
+            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/perfiles"
+                class="nav-link" th:classappend="${activePage == 'perfiles' ? ' active' : ''}">
+                <i class="fa-solid fa-shield-halved"></i> Configurar Roles
+            </a>
+
+            <!-- CERRAR SESIÓN -->
+            <form th:action="@{/logout}" method="post" class="mt-5">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <button type="submit" class="nav-link text-danger border-0 bg-transparent w-100 text-start">
+                    <i class="fa-solid fa-right-from-bracket"></i> Salir
+                </button>
+            </form>
+
+        </nav>
+    </div>
+</body>
+
+</html>
