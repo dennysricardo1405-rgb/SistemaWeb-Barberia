@@ -16,7 +16,10 @@ import com.example.BarberiaLaClasica.repository.PerfilRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.service.BarberoService;
+import com.example.BarberiaLaClasica.service.ConfiguracionSitioService; // ← NUEVO
 import com.example.BarberiaLaClasica.service.PerfilService;
+import com.example.BarberiaLaClasica.service.PromocionService;
+import com.example.BarberiaLaClasica.service.SliderImageService;
 import com.example.BarberiaLaClasica.service.UsuarioService;
 
 import java.util.ArrayList;
@@ -25,34 +28,30 @@ import java.util.List;
 @Controller
 public class NavigationController {
 
-    @Autowired
-    private UsuarioService usuarioService;
-    @Autowired
-    private PerfilRepository perfilRepository;
-    @Autowired
-    private PerfilService perfilService;
-    @Autowired
-    private BarberoRepository barberoRepository;
-    @Autowired
-    private ClienteRepository clienteRepository;
-    @Autowired
-    private ProductoRepository productoRepository;
-    @Autowired
-    private CategoriaRepository categoriaRepository;
-    @Autowired
-    private BarberoService barberoService;
-    @Autowired
-    private ServicioRepository servicioRepository;
+    @Autowired private UsuarioService usuarioService;
+    @Autowired private PerfilRepository perfilRepository;
+    @Autowired private PerfilService perfilService;
+    @Autowired private BarberoRepository barberoRepository;
+    @Autowired private ClienteRepository clienteRepository;
+    @Autowired private ProductoRepository productoRepository;
+    @Autowired private CategoriaRepository categoriaRepository;
+    @Autowired private BarberoService barberoService;
+    @Autowired private ServicioRepository servicioRepository;
+    @Autowired private SliderImageService sliderImageService;
+    @Autowired private PromocionService promocionService;
+    @Autowired private ConfiguracionSitioService configuracionSitioService; // ← NUEVO
+
     @GetMapping("/")
     public String index(Model model) {
-        // Esto forzará a que levante el index usando todos los productos activos
         List<Producto> productosWeb = productoRepository.findByActivoTrue();
         model.addAttribute("productosBarberia", productosWeb);
         model.addAttribute("servicios", servicioRepository.findByEstado(1));
         model.addAttribute("barberos", barberoService.listarTodos());
         model.addAttribute("subcategoriasBarberia",
                 categoriaRepository.findByPadreNombreAndActivoTrue("Productos de Barbería"));
-
+        model.addAttribute("sliderImagenes", sliderImageService.listarActivas());
+        model.addAttribute("promociones",    promocionService.listarActivas());
+        model.addAttribute("config",         configuracionSitioService.obtenerMapa()); // ← NUEVO
         return "index";
     }
 
@@ -60,19 +59,12 @@ public class NavigationController {
     @GetMapping("/admin/dashboard")
     public String dashboard(Model model, Authentication authentication) {
         model.addAttribute("usuarioNombre", authentication.getName());
-
-        // --- AQUÍ ESTÁ EL CAMBIO: DATOS REALES ---
-        // Contamos cuántos registros hay en cada tabla
         long totalBarberos = barberoRepository.count();
         long totalClientes = clienteRepository.count();
-
         model.addAttribute("totalBarberos", totalBarberos);
         model.addAttribute("totalClientes", totalClientes);
-
-        // Por ahora dejamos estos en 0 hasta que hagamos el CitaRepository
         model.addAttribute("citasHoy", 0);
         model.addAttribute("ingresosMes", "0.00");
-
         return "admin-dashboard";
     }
 
