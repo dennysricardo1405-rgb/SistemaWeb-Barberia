@@ -6,10 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import com.twilio.Twilio;
-import com.twilio.rest.api.v2010.account.Message;
-import com.twilio.type.PhoneNumber;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import jakarta.mail.internet.MimeMessage;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -31,13 +30,11 @@ public class CitaService {
     @Autowired
     private ServicioRepository servicioRepository;
 
-    // --- Twilio config (se carga desde application.properties) ---
-    @Value("${twilio.account.sid}")
-    private String twilioSid;
-    @Value("${twilio.auth.token}")
-    private String twilioToken;
-    @Value("${twilio.whatsapp.from}")
-    private String twilioFrom; // "whatsapp:+14155238886"
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Value("${app.mail.from}")
+    private String mailFrom;
 
     // Carpeta donde se guardan los comprobantes (configura en
     // application.properties)
@@ -52,7 +49,6 @@ public class CitaService {
     }
 
     // ── Horas disponibles para un barbero en una fecha ───────────────────────
-    
 
     // ── Confirmar reserva: guarda la cita con comprobante de pago ─────────────
     public Cita confirmarReserva(
@@ -104,13 +100,12 @@ public class CitaService {
     public void aceptarCita(Long citaId) {
         Cita cita = citaRepository.findById(citaId)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
-
-        cita.setEstado(2); // ACEPTADA / EN_SILLA según tu lógica
+        cita.setEstado(2);
         citaRepository.save(cita);
 
-        // Notificar al cliente por WhatsApp si tiene teléfono
-        if (cita.getCliente() != null && cita.getCliente().getTelefono() != null) {
-            enviarWhatsApp(cita);
+        // CAMBIA enviarWhatsApp por enviarEmail:
+        if (cita.getCliente() != null && cita.getCliente().getCorreo() != null) {
+            enviarEmail(cita);
         }
     }
 
@@ -123,36 +118,57 @@ public class CitaService {
     }
 
     // ── Enviar mensaje WhatsApp con Twilio ────────────────────────────────────
-    private void enviarWhatsApp(Cita cita) {
+    private void enviarEmail(Cita cita) {
         try {
-            Twilio.init(twilioSid, twilioToken);
-
             DateTimeFormatter fmtFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             DateTimeFormatter fmtHora = DateTimeFormatter.ofPattern("HH:mm");
 
-            String mensaje = String.format(
-                    "✅ *Barbería La Clásica* - Tu cita ha sido CONFIRMADA 🎉\n\n" +
-                            "📅 Fecha: *%s*\n" +
-                            "⏰ Hora: *%s*\n" +
-                            "💇 Servicio: *%s*\n" +
-                            "✂️ Barbero: *%s*\n\n" +
-                            "¡Te esperamos! Por favor llega 5 minutos antes. 🙏",
-                    cita.getFecha().format(fmtFecha),
-                    cita.getHoraInicio().format(fmtHora),
-                    cita.getServicio().getNombre(),
-                    cita.getBarbero().getNombre());
+            String asunto = "Tu cita en Barbería La Clásica fue confirmada";
 
-            // El número del cliente debe tener formato internacional: +51987654321
-            String numeroCliente = "whatsapp:+51" + cita.getCliente().getTelefono();
+            String cuerpo = """
+                    <div style="font-family:Arial,sans-serif; max-width:520px; margin:0 auto; background:#111; color:#f0ece0; border-radius:12px; overflow:hidden;">
+                        <div style="background:#c9a84c; padding:24px; text-align:center;">
+                            <h2 style="margin:0; color:#0a0a0a;">Barbería La Clásica</h2>
+                            <p style="margin:4px 0 0; color:#0a0a0a; font-size:0.9rem;">Confirmación de Cita</p>
+                        </div>
+                        <div style="padding:28px;">
+                            <p style="font-size:1rem;">Hola <strong>%s</strong>, tu cita ha sido <strong style="color:#c9a84c;">CONFIRMADA</strong> 🎉</p>
+                            <table style="width:100%%; border-collapse:collapse; margin-top:16px;">
+                                <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Fecha</td>
+                                    <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
+                                <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Hora</td>
+                                    <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
+                                <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Servicio</td>
+                                    <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
+                                <tr><td style="padding:10px; color:#aaa;">Barbero</td>
+                                    <td style="padding:10px; font-weight:bold;">%s</td></tr>
+                            </table>
+                            <p style="margin-top:24px; font-size:0.85rem; color:#aaa;">Por favor llega 5 minutos antes. ¡Te esperamos!</p>
+                        </div>
+                        <div style="background:#1a1a1a; padding:14px; text-align:center; font-size:0.78rem; color:#555;">
+                            Barbería La Clásica — Chiclayo, Perú
+                        </div>
+                    </div>
+                    """
+                    .formatted(
+                            cita.getCliente().getNombres(),
+                            cita.getFecha().format(fmtFecha),
+                            cita.getHoraInicio().format(fmtHora),
+                            cita.getServicio().getNombre(),
+                            cita.getBarbero().getNombre());
 
-            Message.creator(
-                    new PhoneNumber(numeroCliente),
-                    new PhoneNumber(twilioFrom),
-                    mensaje).create();
+            MimeMessage mensaje = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(cita.getCliente().getCorreo());
+            helper.setSubject(asunto);
+            helper.setText(cuerpo, true); // true = HTML
+
+            mailSender.send(mensaje);
+            System.out.println("✅ Email enviado a: " + cita.getCliente().getCorreo());
 
         } catch (Exception e) {
-            // No falla silenciosamente — loguea el error pero no revienta el flujo
-            System.err.println("ERROR enviando WhatsApp: " + e.getMessage());
+            System.err.println("ERROR enviando email: " + e.getMessage());
         }
     }
 
