@@ -67,23 +67,32 @@
                 class="nav-link" th:classappend="${activePage == 'productos' ? ' active' : ''}">
                 <i class="fa-solid fa-boxes-stacked"></i> Productos
             </a>
+
             <!-- CATEGORÍAS -->
             <a th:if="${#authorization.expression('hasAuthority(''GESTION_CATEGORIAS'')')}" href="/admin/categorias"
                 class="nav-link" th:classappend="${activePage == 'categorias' ? ' active' : ''}">
                 <i class="fa-solid fa-folder-tree"></i> Categorías
             </a>
 
+            <!-- PROVEEDORES -->
             <a th:if="${#authorization.expression('hasAuthority(''GESTION_PROVEDORES'')')}" href="/admin/proveedores"
                 class="nav-link" th:classappend="${activePage == 'proveedores' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-fast"></i> Proveedores
             </a>
 
-            
             <!-- REPORTES -->
             <a th:if="${#authorization.expression('hasAuthority(''GESTION_REPORTES'')')}" href="/admin/reportes"
                 class="nav-link" th:classappend="${activePage == 'reportes' ? ' active' : ''}">
                 <i class="fa-solid fa-chart-line"></i> Reportes
             </a>
+
+            <!-- GESTIÓN DEL SITIO (SLIDER) -->
+            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/slider"
+                class="nav-link" th:classappend="${activePage == 'slider' ? ' active' : ''}">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Gestión del Sitio
+            </a>
+
+            <!-- RECEPCIÓN SILLAS -->
             <a th:href="@{/secretario/recepcion}" sec:authorize="hasRole('SECRETARIO')"
     class="nav-link" th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
     <i class="fa-solid fa-chair"></i> Recepción Sillas
