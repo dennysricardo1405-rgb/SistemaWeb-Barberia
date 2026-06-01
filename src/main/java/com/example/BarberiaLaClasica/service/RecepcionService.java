@@ -27,8 +27,6 @@ import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.repository.SillaSessionRepository;
 
-import jakarta.transaction.Transactional;
-
 @Service
 public class RecepcionService {
 
