@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
+import jakarta.transaction.Transactional;
 
 import com.example.BarberiaLaClasica.service.BarberoService;
 import com.example.BarberiaLaClasica.service.ProductoService;
@@ -155,14 +156,37 @@ public String ocuparSilla(
     }
 
     // ── Notas de venta ────────────────────────────────────────────────────────
-    @GetMapping("/recepcion/notas-venta")
-    public String notas(Model model) {
-        model.addAttribute("notas", recepcionService.listarNotas());
-        return "secretario/notas-venta";
-    }
+   @GetMapping("/recepcion/notas-venta/{id}/detalle")
+   @ResponseBody
+   public ResponseEntity<Map<String, Object>> detalleNota(@PathVariable Long id) {
+    NotaVenta nota = recepcionService.obtenerNota(id);
 
+    List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
+        Map.<String, Object>of(
+            "descripcion",    d.getDescripcion(),
+            "cantidad",       d.getCantidad(),
+            "precioUnitario", d.getPrecioUnitario(),
+            "subtotal",       d.getSubtotal(),
+            "tipo",           d.getTipo()
+        )
+    ).toList();
+
+    Map<String, Object> resp = new HashMap<>();
+    resp.put("id",       nota.getId());
+    resp.put("fecha",    nota.getFecha().format(
+                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+    resp.put("cliente",  nota.getCliente() != null
+                            ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
+                            : null);
+    resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
+    resp.put("total",    nota.getTotal());
+    resp.put("detalles", detalles);
+
+    return ResponseEntity.ok(resp);
+}
     @PostMapping("/recepcion/asociar-cliente")
     @ResponseBody
+    @Transactional
     public ResponseEntity<Map<String, String>> asociarCliente(
             @RequestParam Long barberoId,
             @RequestParam Long clienteId) {
@@ -173,5 +197,52 @@ public String ocuparSilla(
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/recepcion/notas-venta")
+    public String notas(Model model) {
+    List<NotaVenta> notas = recepcionService.listarNotas();
+    double totalGeneral = notas.stream().mapToDouble(NotaVenta::getTotal).sum();
+    double promedio = notas.isEmpty() ? 0 : totalGeneral / notas.size();
+    
+    model.addAttribute("notas", notas);
+    model.addAttribute("totalGeneral", totalGeneral);
+    model.addAttribute("promedio", promedio);
+    return "secretario/notas-venta";
+}  
+
+@GetMapping("/recepcion/ultima-nota")
+@ResponseBody
+public ResponseEntity<Map<String, Object>> ultimaNota(@RequestParam Long barberoId) {
+    // Trae la última nota del barbero
+    NotaVenta nota = recepcionService.listarNotas().stream()
+        .filter(n -> n.getBarbero() != null && n.getBarbero().getId().equals(barberoId))
+        .findFirst()
+        .orElse(null);
+
+    if (nota == null) return ResponseEntity.notFound().build();
+
+    List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
+        Map.<String, Object>of(
+            "descripcion", d.getDescripcion(),
+            "cantidad",    d.getCantidad(),
+            "subtotal",    d.getSubtotal(),
+            "tipo",        d.getTipo()
+        )
+    ).toList();
+
+    Map<String, Object> resp = new HashMap<>();
+    resp.put("id",       nota.getId());
+    resp.put("fecha",    nota.getFecha().format(
+                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+    resp.put("cliente",  nota.getCliente() != null
+                            ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
+                            : null);
+    resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
+    resp.put("total",    nota.getTotal());
+    resp.put("detalles", detalles);
+
+    return ResponseEntity.ok(resp);
+}
+
 
 }

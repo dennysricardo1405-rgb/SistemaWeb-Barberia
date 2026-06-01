@@ -94,10 +94,16 @@
 
             <!-- RECEPCIÓN SILLAS -->
             <a th:href="@{/secretario/recepcion}" sec:authorize="hasRole('SECRETARIO')"
-                class="nav-link" th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
-                <i class="fa-solid fa-chair"></i> Recepción Sillas
-            </a>
+    class="nav-link" th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
+    <i class="fa-solid fa-chair"></i> Recepción Sillas
+</a>
 
+
+<!-- NOTAS DE VENTA ← agregar esto -->
+<a th:href="@{/secretario/recepcion/notas-venta}" sec:authorize="hasRole('SECRETARIO')"
+    class="nav-link" th:classappend="${activePage == 'notas'} ? ' active' : ''">
+    <i class="fa-solid fa-receipt"></i> Notas de Venta
+</a>
             <!-- CONFIGURAR ROLES -->
             <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/perfiles"
                 class="nav-link" th:classappend="${activePage == 'perfiles' ? ' active' : ''}">
