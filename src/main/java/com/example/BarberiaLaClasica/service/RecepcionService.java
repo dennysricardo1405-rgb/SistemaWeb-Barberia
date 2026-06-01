@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.model.Cita;
@@ -58,6 +59,11 @@ public class RecepcionService {
     public Optional<SillaSession> getSessionActiva(Long barberoId) {
         return sessionRepository.findByBarberoIdAndEstado(barberoId, 1);
     }
+
+    public NotaVenta obtenerNota(Long id) {
+    return notaVentaRepository.findById(id)
+        .orElseThrow(() -> new RuntimeException("Nota no encontrada"));
+}
 
     // ── Abrir sesión desde RESERVA ────────────────────────────────────────────
     @Transactional
@@ -221,20 +227,18 @@ public class RecepcionService {
         return notaVentaRepository.findAllByOrderByFechaDesc();
     }
 
+
     @Transactional
     public void asociarCliente(Long barberoId, Long clienteId) {
-        SillaSession session = getSessionActiva(barberoId)
-                .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
+    SillaSession session = sessionRepository
+        .findByBarberoIdAndEstado(barberoId, 1)
+        .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
 
-        System.out.println(">>> SESSION ID: " + session.getId());
-        System.out.println(">>> CLIENTE ID A ASOCIAR: " + clienteId);
+    clienteRepository.findById(clienteId)
+        .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-
-        session.setCliente(cliente);
-        SillaSession saved = sessionRepository.saveAndFlush(session);
-
-        System.out.println(">>> CLIENTE GUARDADO: " + saved.getCliente());
-    }
+    sessionRepository.actualizarCliente(session.getId(), clienteId);
+    
+    System.out.println(">>> UPDATE ejecutado: sesión " + session.getId() + " → cliente " + clienteId);
+}
 }

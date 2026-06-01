@@ -26,8 +26,6 @@ function abrirModalOcupar(barberoId, barberoNombre) {
 function abrirModalGestionar(id, nombre) {
     document.getElementById('modalGestionarBarberoNombre').innerText = nombre;
     document.getElementById('consumoBarberoId').value = id;
-    document.getElementById('btnFinalizarAtencion').href =
-        `/secretario/recepcion/finalizar-pago/${id}`;
     limpiarClienteGestion();
     switchGestionTab('existente');
     cargarConsumosDeSilla(id);
@@ -39,7 +37,8 @@ function cargarConsumosDeSilla(barberoId) {
     fetch(`/secretario/recepcion/api-consumos/${barberoId}`)
     .then(r => r.json())
     .then(data => {
-        // Servicio
+
+        // ── Servicio en el label izquierdo ──
         const labelServicio = document.getElementById('labelServicioActual');
         if (labelServicio) {
             labelServicio.textContent = data.servicio
@@ -47,23 +46,52 @@ function cargarConsumosDeSilla(barberoId) {
                 : '—';
         }
 
-        // Cliente ya asociado
+        // ── Cliente ya asociado ──
         if (data.cliente) {
             document.getElementById('clienteGestionNombre').textContent =
                 data.cliente.nombres + ' ' + data.cliente.apellidos + ' — ' + data.cliente.dni;
             document.getElementById('clienteGestionInfo').style.display = 'block';
         }
 
-        // Tabla consumos
+        // ── Tabla: primero servicio base, luego productos ──
         const tbody = document.getElementById('tablaDetalleConsumos');
         tbody.innerHTML = '';
+
+        // ✅ Fila 1: Servicio base (sin botón eliminar)
+        if (data.servicio) {
+            const precio = Number(data.servicio.precio);
+            tbody.innerHTML += `
+                <tr style="border-left:3px solid #c9a84c;">
+                    <td>
+                        <i class="fa-solid fa-scissors me-1 text-warning small"></i>
+                        <span class="fw-bold text-warning">${data.servicio.nombre}</span>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">SERVICIO</span>
+                    </td>
+                    <td class="text-center">1</td>
+                    <td class="text-end">S/ ${precio.toFixed(2)}</td>
+                    <td class="text-end text-success fw-bold">S/ ${precio.toFixed(2)}</td>
+                    <td class="text-center">
+                        <i class="fa-solid fa-lock text-muted small" title="No removible"></i>
+                    </td>
+                </tr>`;
+        }
+
+        // ✅ Filas siguientes: productos agregados
         if (!data.consumos || data.consumos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Sin productos agregados aún</td></tr>`;
+            tbody.innerHTML += `
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-2 small">
+                        <i class="fa-solid fa-box-open me-1"></i>Sin productos agregados aún
+                    </td>
+                </tr>`;
         } else {
             data.consumos.forEach(c => {
                 tbody.innerHTML += `
                 <tr>
-                    <td>${c.descripcion}</td>
+                    <td>
+                        <i class="fa-solid fa-box me-1 text-muted small"></i>
+                        ${c.descripcion}
+                    </td>
                     <td class="text-center">${c.cantidad}</td>
                     <td class="text-end">S/ ${Number(c.precioUnit).toFixed(2)}</td>
                     <td class="text-end text-success fw-bold">S/ ${Number(c.subtotal).toFixed(2)}</td>
@@ -77,8 +105,11 @@ function cargarConsumosDeSilla(barberoId) {
             });
         }
 
+        // ── Total = servicio + productos ──
+        const totalConsumos  = data.total || 0;
+        const precioServicio = data.servicio ? Number(data.servicio.precio) : 0;
         document.getElementById('textoTotalSilla').textContent =
-            'S/ ' + Number(data.total || 0).toFixed(2);
+            'S/ ' + (totalConsumos + precioServicio).toFixed(2);
     })
     .catch(err => console.error('Error cargando consumos:', err));
 }
@@ -185,10 +216,19 @@ function buscarClienteGestion(valor) {
 // ── ASOCIAR CLIENTE A SESIÓN ──────────────────────────────────
 async function asociarClienteGestion(clienteId, nombre, dni) {
     const barberoId = document.getElementById('consumoBarberoId').value;
+    
+    // Obtener token CSRF
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content 
+                   || document.querySelector('input[name="_csrf"]')?.value 
+                   || '';
+
     try {
         const res = await fetch(
             `/secretario/recepcion/asociar-cliente?barberoId=${barberoId}&clienteId=${clienteId}`,
-            { method: 'POST' }
+            { 
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken }  // ← agregar esto
+            }
         );
         if (!res.ok) {
             const err = await res.json();
@@ -267,3 +307,47 @@ function mostrarMsg(el, tipo, texto) {
     el.className = 'mt-2 small fw-bold ' + (tipo === 'error' ? 'text-danger' : 'text-success');
     el.innerHTML = `<i class="fa-solid fa-${tipo === 'error' ? 'circle-xmark' : 'check'} me-1"></i>${texto}`;
 }
+
+async function finalizarAtencion() {
+    const barberoId = document.getElementById('consumoBarberoId').value;
+    if (!confirm('¿Confirmar pago y liberar la silla?')) return;
+
+    const res = await fetch(`/secretario/recepcion/finalizar-pago/${barberoId}`);
+
+    // La respuesta es un redirect, así que recargamos con mensaje
+    if (res.redirected || res.ok) {
+        // Mostrar modal de resumen antes de redirigir
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
+        const resNota = await fetch(`/secretario/recepcion/ultima-nota?barberoId=${barberoId}`, {
+            headers: { 'X-CSRF-TOKEN': csrfToken }
+        });
+        if (resNota.ok) {
+            const nota = await resNota.json();
+            mostrarResumenNota(nota);
+        } else {
+            window.location.href = '/secretario/recepcion';
+        }
+    }
+}
+
+function mostrarResumenNota(nota) {
+    document.getElementById('resumenNotaId').textContent    = '#' + nota.id;
+    document.getElementById('resumenNotaFecha').textContent = nota.fecha;
+    document.getElementById('resumenNotaCliente').textContent = nota.cliente || 'Sin registro';
+    document.getElementById('resumenNotaBarbero').textContent = nota.barbero || '—';
+    document.getElementById('resumenNotaTotal').textContent  = 'S/ ' + Number(nota.total).toFixed(2);
+
+    const tbody = document.getElementById('resumenNotaDetalles');
+    tbody.innerHTML = '';
+    nota.detalles.forEach(d => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${d.descripcion}</td>
+                <td class="text-center">${d.cantidad}</td>
+                <td class="text-end">S/ ${Number(d.subtotal).toFixed(2)}</td>
+            </tr>`;
+    });
+
+    new bootstrap.Modal(document.getElementById('modalResumenNota')).show();
+}
+
