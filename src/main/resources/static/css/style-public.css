@@ -18,6 +18,7 @@ body {
     background-color: var(--bg);
     color: var(--text);
     font-family: 'Barlow', sans-serif;
+    overflow-x: hidden;
 }
 
 /* ── NAVBAR ── */
@@ -277,3 +278,146 @@ body {
     background-color: #c9a84c;
     color: #111;
 }
+
+@media (max-width: 768px) {
+    .navbar-custom {
+        padding: 12px 0;
+    }
+ 
+    .navbar-custom .container {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 0 16px;
+    }
+ 
+    .navbar-brand-text {
+        font-size: 1.2rem;
+    }
+ 
+    /* Oculta "Catálogo" en móvil para no saturar */
+    .navbar-custom a[href="/catalogo"] {
+        display: none;
+    }
+ 
+    /* Botones del navbar más pequeños */
+    .navbar-custom .btn-gold,
+    .navbar-custom .btn-outline-gold {
+        padding: 8px 14px;
+        font-size: 0.82rem;
+    }
+ 
+    /* Dropdown del usuario: texto del email recortado */
+    .navbar-custom .dropdown-toggle span {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+    }
+}
+ 
+/* ── HERO MOBILE ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .hero {
+        padding: 100px 20px 60px;
+        min-height: 100svh;
+        align-items: center;
+    }
+ 
+    .hero-subtitle {
+        font-size: 0.75rem;
+        letter-spacing: 2px;
+    }
+ 
+    .hero-title {
+        font-size: clamp(2rem, 10vw, 3rem);
+        line-height: 1.15;
+    }
+ 
+    .hero-divider {
+        margin: 16px auto;
+    }
+ 
+    .hero-desc {
+        font-size: 0.9rem;
+        padding: 0 8px;
+    }
+ 
+    /* Botones hero en columna en pantallas muy pequeñas */
+    .hero .d-flex.gap-3 {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px !important;
+    }
+ 
+    .hero .btn-gold,
+    .hero .btn-outline-gold {
+        width: 100%;
+        max-width: 280px;
+        text-align: center;
+        justify-content: center;
+        font-size: 0.95rem !important;
+        padding: 13px 20px !important;
+    }
+}
+ 
+/* ── INFO CARDS MOBILE ──────────────────────────────────────── */
+@media (max-width: 768px) {
+    .section-info {
+        padding: 50px 0;
+    }
+ 
+    .info-card {
+        padding: 22px 18px;
+    }
+}
+ 
+/* ── SERVICIOS MOBILE ───────────────────────────────────────── */
+@media (max-width: 768px) {
+    .section-services {
+        padding: 60px 0;
+    }
+ 
+    .section-title {
+        font-size: 1.8rem;
+    }
+ 
+    .service-item {
+        height: 260px;
+    }
+}
+ 
+/* ── PRODUCTOS MOBILE ───────────────────────────────────────── */
+@media (max-width: 576px) {
+    .btn-filtro-subcat {
+        padding: 6px 14px;
+        font-size: 0.78rem;
+    }
+ 
+    .card-producto-premium .img-container {
+        height: 160px;
+    }
+}
+ 
+/* ── FOOTER MOBILE ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .footer-premium {
+        padding: 50px 0 24px;
+        text-align: center;
+    }
+ 
+    .footer-premium .d-flex.gap-3 {
+        justify-content: center;
+    }
+ 
+    .footer-links,
+    .footer-info {
+        text-align: center;
+    }
+ 
+    .footer-links li,
+    .footer-info li {
+        margin-bottom: 8px;
+    }
+}
+ 

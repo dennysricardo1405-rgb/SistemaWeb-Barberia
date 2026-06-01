@@ -18,6 +18,7 @@ body {
     color: var(--text);
     font-family: 'Barlow', sans-serif;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 /* HEADER */
@@ -453,4 +454,149 @@ input[type="date"]:focus {
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.85rem;
+}
+@media (max-width: 768px) {
+    .reserva-header .brand {
+        font-size: 1.3rem;
+    }
+}
+ 
+/* ── PROGRESS BAR ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .progress-bar-custom {
+        padding: 20px 12px;
+        gap: 0;
+    }
+ 
+    .step-dot {
+        width: 30px;
+        height: 30px;
+        font-size: 0.72rem;
+    }
+ 
+    .step-label {
+        font-size: 0.6rem;
+    }
+ 
+    .step-line {
+        max-width: 40px;
+    }
+}
+ 
+/* ── STEPS WRAPPER ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .steps-wrapper {
+        padding: 0 14px 50px;
+    }
+ 
+    .step-title {
+        font-size: 1.25rem;
+    }
+}
+ 
+/* ── PASO 1: SERVICIOS ──────────────────────────────────────── */
+@media (max-width: 480px) {
+    .options-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+ 
+    .option-card {
+        padding: 14px 10px;
+    }
+ 
+    .option-card .option-icon {
+        font-size: 1.4rem;
+        margin-bottom: 6px;
+    }
+ 
+    .option-card .option-name {
+        font-size: 0.85rem;
+    }
+ 
+    .option-card .option-price {
+        font-size: 0.9rem;
+    }
+}
+ 
+/* ── PASO 2: BARBEROS ───────────────────────────────────────── */
+@media (max-width: 480px) {
+    .barbero-card {
+        padding: 12px;
+        gap: 10px;
+    }
+ 
+    .barbero-avatar {
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+    }
+ 
+    .barbero-name {
+        font-size: 0.9rem;
+    }
+}
+ 
+/* ── PASO 3: FECHA Y HORA ───────────────────────────────────── */
+@media (max-width: 480px) {
+    .horas-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+ 
+    .hora-btn {
+        padding: 8px 4px;
+        font-size: 0.82rem;
+    }
+ 
+    input[type="date"] {
+        font-size: 0.9rem;
+        padding: 10px 12px;
+    }
+}
+ 
+/* ── PASO 4: RESUMEN ────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .resumen-card {
+        padding: 16px;
+    }
+ 
+    .resumen-row {
+        padding: 8px 0;
+        font-size: 0.88rem;
+    }
+}
+ 
+/* ── BOTONES DE NAVEGACIÓN ──────────────────────────────────── */
+@media (max-width: 480px) {
+    .btn-gold,
+    .btn-outline {
+        padding: 11px 20px;
+        font-size: 0.9rem;
+    }
+}
+ 
+/* ── MODAL AUTH ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .modal-dialog {
+        margin: 10px;
+    }
+ 
+    .modal-body {
+        padding: 16px !important;
+    }
+ 
+    .modal-form-control {
+        padding: 9px 12px;
+        font-size: 0.9rem;
+    }
+ 
+    .tab-btn {
+        padding: 9px;
+        font-size: 0.85rem;
+    }
+ 
+    .row.g-2 > .col-6 {
+        width: 100%;
+    }
 }
