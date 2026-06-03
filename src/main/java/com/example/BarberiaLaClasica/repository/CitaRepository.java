@@ -2,6 +2,8 @@ package com.example.BarberiaLaClasica.repository;
 
 import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.model.Cliente;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -52,5 +54,38 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
     // Para el secretario: todas las citas de hoy
     List<Cita> findByFechaOrderByHoraInicioAsc(LocalDate fecha);
-    Optional<Cita> findByBarberoIdAndFechaAndEstado(Long barberoId, LocalDate fecha, int estado);
+
+    @Query("""
+                SELECT c FROM Cita c
+                WHERE c.barbero.id = :barberoId
+                AND c.fecha = :fecha
+                AND c.estado = :estado
+                ORDER BY c.horaInicio ASC
+                LIMIT 1
+            """)
+    Optional<Cita> findProximaCitaPorBarberoFechaEstado(
+            @Param("barberoId") Long barberoId,
+            @Param("fecha") LocalDate fecha,
+            @Param("estado") int estado);
+
+    @Query("""
+                SELECT COUNT(c) FROM Cita c
+                WHERE c.cliente.id = :clienteId
+                AND c.estado IN (1, 2)
+            """)
+    long contarReservasActivasPorCliente(@Param("clienteId") Long clienteId);
+
+    Page<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente, Pageable pageable);
+
+    // Verificar si cliente tiene cita activa distinta a una específica (para
+    // reprogramar)
+    @Query("""
+                SELECT COUNT(c) > 0 FROM Cita c
+                WHERE c.cliente.id = :clienteId
+                AND c.estado IN (1, 2)
+                AND c.id <> :excludeId
+            """)
+    boolean tieneOtraReservaActiva(
+            @Param("clienteId") Long clienteId,
+            @Param("excludeId") Long excludeId);
 }

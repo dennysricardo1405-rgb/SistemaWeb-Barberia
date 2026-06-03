@@ -1,7 +1,7 @@
 // ── Estado global de la reserva ──────────────────────────────────────────────
 const reserva = {
     servicioId: null, servicioNombre: '', servicioPrecio: '',
-    barberoId: null,  barberoNombre: '',
+    barberoId: null, barberoNombre: '',
     fecha: '', hora: ''
 };
 
@@ -39,7 +39,7 @@ function actualizarProgress(paso) {
 function seleccionarServicio(el) {
     document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    reserva.servicioId     = el.dataset.id;
+    reserva.servicioId = el.dataset.id;
     reserva.servicioNombre = el.dataset.nombre;
     reserva.servicioPrecio = el.dataset.precio;
     document.getElementById('btnSiguiente1').disabled = false;
@@ -55,7 +55,7 @@ function seleccionarBarbero(el) {
     el.classList.add('selected');
     const icon = el.querySelector('.check-icon');
     if (icon) icon.style.display = 'block';
-    reserva.barberoId     = el.dataset.id;
+    reserva.barberoId = el.dataset.id;
     reserva.barberoNombre = el.dataset.nombre;
     document.getElementById('btnSiguiente2').disabled = false;
 }
@@ -80,13 +80,13 @@ async function cargarHoras() {
     if (!fecha || !reserva.barberoId) return;
 
     reserva.fecha = fecha;
-    reserva.hora  = '';
+    reserva.hora = '';
     document.getElementById('btnSiguiente3').disabled = true;
-    document.getElementById('loadingHoras').style.display   = 'block';
+    document.getElementById('loadingHoras').style.display = 'block';
     document.getElementById('horasContainer').style.display = 'none';
-    document.getElementById('sinHoras').style.display       = 'none';
+    document.getElementById('sinHoras').style.display = 'none';
 
-    const res  = await fetch(`/api/citas/horas-disponibles?barberoId=${reserva.barberoId}&fecha=${fecha}`);
+    const res = await fetch(`/api/citas/horas-disponibles?barberoId=${reserva.barberoId}&fecha=${fecha}`);
     const data = await res.json();
     const slots = data.slots;
 
@@ -111,7 +111,19 @@ async function cargarHoras() {
         const btn = document.createElement('button');
         btn.textContent = s.hora;
 
-        if (s.disponible) {
+        // ── BLOQUEAR HORAS PASADAS si es hoy ─────────────────────────
+        const esHoy = document.getElementById('fechaInput').value ===
+            new Date().toISOString().split('T')[0];
+        const [hh, mm] = s.hora.split(':').map(Number);
+        const ahora = new Date();
+        const yaFue = esHoy && (hh < ahora.getHours() ||
+            (hh === ahora.getHours() && mm <= ahora.getMinutes()));
+
+        if (yaFue) {
+            btn.className = 'hora-btn ocupada confirmada';
+            btn.disabled = true;
+            btn.title = 'Hora no disponible';
+        } else if (s.disponible) {
             btn.className = 'hora-btn';
             btn.onclick = () => {
                 document.querySelectorAll('.hora-btn').forEach(b => b.classList.remove('selected'));
@@ -121,12 +133,12 @@ async function cargarHoras() {
             };
         } else if (s.estadoOcupacion === 'pendiente') {
             btn.className = 'hora-btn ocupada pendiente';
-            btn.disabled  = true;
-            btn.title     = 'Reserva en revisión';
+            btn.disabled = true;
+            btn.title = 'Reserva en revisión';
         } else {
             btn.className = 'hora-btn ocupada confirmada';
-            btn.disabled  = true;
-            btn.title     = 'Horario no disponible';
+            btn.disabled = true;
+            btn.title = 'Horario no disponible';
         }
 
         grid.appendChild(btn);
@@ -144,16 +156,16 @@ async function cargarHoras() {
 // ── Paso 4: Rellenar resumen ──────────────────────────────────────────────────
 function rellenarResumen() {
     document.getElementById('resumenServicio').textContent = reserva.servicioNombre;
-    document.getElementById('resumenBarbero').textContent  = reserva.barberoNombre;
-    document.getElementById('resumenFecha').textContent    = formatearFecha(reserva.fecha);
-    document.getElementById('resumenHora').textContent     = reserva.hora;
-    document.getElementById('resumenPrecio').textContent   = 'S/. ' + reserva.servicioPrecio;
+    document.getElementById('resumenBarbero').textContent = reserva.barberoNombre;
+    document.getElementById('resumenFecha').textContent = formatearFecha(reserva.fecha);
+    document.getElementById('resumenHora').textContent = reserva.hora;
+    document.getElementById('resumenPrecio').textContent = 'S/. ' + reserva.servicioPrecio;
 }
 
 function formatearFecha(f) {
     if (!f) return '—';
     const [y, m, d] = f.split('-');
-    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return `${d} ${meses[parseInt(m) - 1]} ${y}`;
 }
 
@@ -167,9 +179,9 @@ async function procederAlPago() {
         },
         body: JSON.stringify({
             servicioId: reserva.servicioId,
-            barberoId:  reserva.barberoId,
-            fecha:      reserva.fecha,
-            hora:       reserva.hora
+            barberoId: reserva.barberoId,
+            fecha: reserva.fecha,
+            hora: reserva.hora
         })
     });
     const data = await res.json();
@@ -182,7 +194,7 @@ async function procederAlPago() {
 
 // ── Modal Auth: cambiar tabs ──────────────────────────────────────────────────
 function showTab(tab) {
-    document.getElementById('tabLogin').style.display    = tab === 'login'    ? 'block' : 'none';
+    document.getElementById('tabLogin').style.display = tab === 'login' ? 'block' : 'none';
     document.getElementById('tabRegistro').style.display = tab === 'registro' ? 'block' : 'none';
     document.querySelectorAll('.tab-btn').forEach((b, i) => {
         b.classList.toggle('active',
@@ -194,7 +206,7 @@ function showTab(tab) {
 // ── Login desde modal ─────────────────────────────────────────────────────────
 function hacerLogin() {
     const email = document.getElementById('loginEmail').value;
-    const pass  = document.getElementById('loginPassword').value;
+    const pass = document.getElementById('loginPassword').value;
     document.getElementById('loginError').style.display = 'none';
 
     const form = document.createElement('form');
@@ -214,9 +226,9 @@ async function buscarDniModal() {
     const dni = document.getElementById('regDni').value;
     if (dni.length !== 8) return;
     try {
-        const res  = await fetch(`/api/dni/${dni}`);
+        const res = await fetch(`/api/dni/${dni}`);
         const data = await res.json();
-        document.getElementById('regNombres').value   = data.nombres   || '';
+        document.getElementById('regNombres').value = data.nombres || '';
         document.getElementById('regApellidos').value = data.apellidos || '';
     } catch {
         alert('No se pudo consultar el DNI');
@@ -228,24 +240,24 @@ async function hacerRegistro() {
     errEl.style.display = 'none';
 
     const body = new URLSearchParams({
-        dni:           document.getElementById('regDni').value,
-        nombres:       document.getElementById('regNombres').value,
-        apellidos:     document.getElementById('regApellidos').value,
-        telefono:      document.getElementById('regTelefono').value,
-        correo:        document.getElementById('regCorreo').value,
+        dni: document.getElementById('regDni').value,
+        nombres: document.getElementById('regNombres').value,
+        apellidos: document.getElementById('regApellidos').value,
+        telefono: document.getElementById('regTelefono').value,
+        correo: document.getElementById('regCorreo').value,
         passwordPlana: document.getElementById('regPassword').value,
-        _csrf:         getCsrfToken()
+        _csrf: getCsrfToken()
     });
 
     const res = await fetch('/cliente/registro', { method: 'POST', body });
     if (res.redirected && res.url.includes('login')) {
-        document.getElementById('loginEmail').value    = document.getElementById('regCorreo').value;
+        document.getElementById('loginEmail').value = document.getElementById('regCorreo').value;
         document.getElementById('loginPassword').value = document.getElementById('regPassword').value;
         showTab('login');
         hacerLogin();
     } else {
-        errEl.textContent    = 'Error al registrarse. Verifica los datos.';
-        errEl.style.display  = 'block';
+        errEl.textContent = 'Error al registrarse. Verifica los datos.';
+        errEl.style.display = 'block';
     }
 }
 
