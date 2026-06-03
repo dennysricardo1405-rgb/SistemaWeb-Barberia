@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.model.Cita;
-import com.example.BarberiaLaClasica.model.Cliente;
+import com.example.BarberiaLaClasica.model.Cliente; 
 import com.example.BarberiaLaClasica.model.ConsumoSilla;
 import com.example.BarberiaLaClasica.model.DetalleNotaVenta;
 import com.example.BarberiaLaClasica.model.NotaVenta;
