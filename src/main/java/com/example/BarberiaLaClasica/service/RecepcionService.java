@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.model.Cita;
-import com.example.BarberiaLaClasica.model.Cliente; 
 import com.example.BarberiaLaClasica.model.ConsumoSilla;
 import com.example.BarberiaLaClasica.model.DetalleNotaVenta;
 import com.example.BarberiaLaClasica.model.NotaVenta;
@@ -26,6 +25,7 @@ import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.repository.SillaSessionRepository;
+
 
 @Service
 public class RecepcionService {
@@ -49,9 +49,9 @@ public class RecepcionService {
 
     // ── Cita de reserva confirmada para hoy de un barbero ─────────────────────
     public Optional<Cita> getCitaReservaHoy(Long barberoId) {
-        return citaRepository.findByBarberoIdAndFechaAndEstado(
-                barberoId, LocalDate.now(), 2); // estado 2 = confirmada
-    }
+    return citaRepository.findProximaCitaPorBarberoFechaEstado(
+            barberoId, LocalDate.now(), 2);
+}
 
     // ── Sesión activa de un barbero ───────────────────────────────────────────
     public Optional<SillaSession> getSessionActiva(Long barberoId) {
