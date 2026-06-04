@@ -52,6 +52,8 @@ public class Cita {
     private LocalDateTime fechaRegistro;
     @Column(name = "comprobante_pago", nullable = true)
     private String comprobantePago;
+    @Column(name = "reprogramada", nullable = false)
+    private boolean reprogramada = false;
 
     // Constructor vacío requerido por JPA
     public Cita() {

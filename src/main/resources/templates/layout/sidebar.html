@@ -39,7 +39,7 @@
 
             <!-- CLIENTES -->
             <a th:href="${#authorization.expression('hasRole(''ROLE_ADMINISTRADOR'')')} ? '/admin/cliente' : '/secretario/cliente'"
-                class="nav-link">
+                class="nav-link" th:classappend="${activePage == 'clientes' ? ' active' : ''}">
                 <i class="fa-solid fa-users me-2"></i> Clientes
             </a>
 
@@ -79,7 +79,9 @@
                 class="nav-link" th:classappend="${activePage == 'proveedores' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-fast"></i> Proveedores
             </a>
-
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_INVENTARIO'')')}" href="/admin/productos/compras" class="nav-link" th:classappend="${activePage == 'compras_proveedor' ? ' active' : ''}">
+                <i class="fa-solid fa-truck-ramp-box"></i> Entrada de Stock
+            </a>
             <!-- REPORTES -->
             <a th:if="${#authorization.expression('hasAuthority(''GESTION_REPORTES'')')}" href="/admin/reportes"
                 class="nav-link" th:classappend="${activePage == 'reportes' ? ' active' : ''}">
@@ -87,23 +89,22 @@
             </a>
 
             <!-- GESTIÓN DEL SITIO (SLIDER) -->
-            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/slider"
-                class="nav-link" th:classappend="${activePage == 'slider' ? ' active' : ''}">
+            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/slider" class="nav-link"
+                th:classappend="${activePage == 'slider' ? ' active' : ''}">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> Gestión del Sitio
             </a>
 
             <!-- RECEPCIÓN SILLAS -->
-            <a th:href="@{/secretario/recepcion}" sec:authorize="hasRole('SECRETARIO')"
-    class="nav-link" th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
-    <i class="fa-solid fa-chair"></i> Recepción Sillas
-</a>
-
-
-<!-- NOTAS DE VENTA ← agregar esto -->
-<a th:href="@{/secretario/recepcion/notas-venta}" sec:authorize="hasRole('SECRETARIO')"
-    class="nav-link" th:classappend="${activePage == 'notas'} ? ' active' : ''">
-    <i class="fa-solid fa-receipt"></i> Notas de Venta
-</a>
+            <a th:href="@{/secretario/recepcion}" sec:authorize="hasRole('SECRETARIO')" class="nav-link"
+                th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
+                <i class="fa-solid fa-chair"></i> Recepción Sillas
+            </a>
+    
+            <!-- NOTAS DE VENTA ← agregar esto -->
+            <a th:href="@{/secretario/recepcion/notas-venta}" sec:authorize="hasRole('SECRETARIO')" class="nav-link"
+                th:classappend="${activePage == 'notas'} ? ' active' : ''">
+                <i class="fa-solid fa-receipt"></i> Notas de Venta
+            </a>
             <!-- CONFIGURAR ROLES -->
             <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/perfiles"
                 class="nav-link" th:classappend="${activePage == 'perfiles' ? ' active' : ''}">
