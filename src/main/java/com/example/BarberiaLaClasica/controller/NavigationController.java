@@ -16,7 +16,7 @@ import com.example.BarberiaLaClasica.repository.PerfilRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.service.BarberoService;
-import com.example.BarberiaLaClasica.service.ConfiguracionSitioService; // ← NUEVO
+import com.example.BarberiaLaClasica.service.ConfiguracionSitioService;
 import com.example.BarberiaLaClasica.service.PerfilService;
 import com.example.BarberiaLaClasica.service.PromocionService;
 import com.example.BarberiaLaClasica.service.SliderImageService;
@@ -24,6 +24,7 @@ import com.example.BarberiaLaClasica.service.UsuarioService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class NavigationController {
@@ -39,7 +40,7 @@ public class NavigationController {
     @Autowired private ServicioRepository servicioRepository;
     @Autowired private SliderImageService sliderImageService;
     @Autowired private PromocionService promocionService;
-    @Autowired private ConfiguracionSitioService configuracionSitioService; // ← NUEVO
+    @Autowired private ConfiguracionSitioService configuracionSitioService;
 
     @GetMapping("/")
     public String index(Model model) {
@@ -50,8 +51,8 @@ public class NavigationController {
         model.addAttribute("subcategoriasBarberia",
                 categoriaRepository.findByPadreNombreAndActivoTrue("Productos de Barbería"));
         model.addAttribute("sliderImagenes", sliderImageService.listarActivas());
-        model.addAttribute("promociones",    promocionService.listarActivas());
-        model.addAttribute("config",         configuracionSitioService.obtenerMapa()); // ← NUEVO
+        model.addAttribute("promociones", promocionService.listarActivas());
+        model.addAttribute("config", configuracionSitioService.obtenerMapa());
         return "index";
     }
 
@@ -83,14 +84,30 @@ public class NavigationController {
         return "redirect:/admin/usuarios";
     }
 
+    // ── Contador de usuarios activos (para el badge y barra) ──
+    @GetMapping("/admin/usuarios/count")
+    @ResponseBody
+    public Map<String, Long> contarUsuarios() {
+        return Map.of("total", usuarioService.contarActivos());
+    }
+
     @PostMapping("/admin/usuarios/guardar")
     public String guardarUsuario(@ModelAttribute Usuario usuario,
-            @RequestParam("perfilId") Long perfilId) {
-        Perfil p = perfilRepository.findById(perfilId)
-                .orElseThrow(() -> new RuntimeException("Perfil no encontrado"));
-        usuario.setPerfil(p);
-        usuarioService.guardar(usuario);
-        return "redirect:/admin/usuarios";
+            @RequestParam("perfilId") Long perfilId,
+            Model model, Authentication authentication) {
+        try {
+            Perfil p = perfilRepository.findById(perfilId)
+                    .orElseThrow(() -> new RuntimeException("Perfil no encontrado"));
+            usuario.setPerfil(p);
+            usuarioService.guardar(usuario);
+            return "redirect:/admin/usuarios";
+        } catch (IllegalStateException e) {
+            model.addAttribute("errorLimite", "⚠️ No puedes agregar más usuarios. El máximo permitido es 5.");
+            model.addAttribute("usuarios", usuarioService.listarTodos());
+            model.addAttribute("perfiles", perfilService.listarTodo());
+            model.addAttribute("usuarioLogueado", authentication.getName());
+            return "usuarios-lista";
+        }
     }
 
     @PostMapping("/admin/usuarios/editar")

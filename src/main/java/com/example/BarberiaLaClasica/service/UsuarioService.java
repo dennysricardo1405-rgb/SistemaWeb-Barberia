@@ -20,14 +20,25 @@ public class UsuarioService {
     private BCryptPasswordEncoder passwordEncoder;
 
     public List<Usuario> listarActivos() {
-        return usuarioRepository.findByEstado(1); 
+        return usuarioRepository.findByEstado(1);
     }
 
     public Usuario guardar(Usuario usuario) {
+        // ✅ NUEVO: Validar límite de 5 usuarios activos
+        long totalActivos = usuarioRepository.countByEstado(1);
+        if (totalActivos >= 5) {
+            throw new IllegalStateException("Límite máximo de 5 usuarios alcanzado.");
+        }
+
         String passCifrada = passwordEncoder.encode(usuario.getPassword());
         usuario.setPassword(passCifrada);
         usuario.setEstado(1);
         return usuarioRepository.save(usuario);
+    }
+
+    // ✅ NUEVO: contar usuarios activos para el frontend
+    public long contarActivos() {
+        return usuarioRepository.countByEstado(1);
     }
 
     public boolean desactivarUsuario(Long idAEliminar, Long idUsuarioLogueado) {
@@ -47,7 +58,7 @@ public class UsuarioService {
 
     public void eliminarLogico(Long id) {
         usuarioRepository.findById(id).ifPresent(usuario -> {
-            usuario.setEstado(0); // 0 = Inactivo / Eliminado
+            usuario.setEstado(0);
             usuarioRepository.save(usuario);
         });
     }
@@ -60,6 +71,6 @@ public class UsuarioService {
     }
 
     public List<Usuario> listarTodos() {
-        return usuarioRepository.findAll(); 
+        return usuarioRepository.findAll();
     }
 }

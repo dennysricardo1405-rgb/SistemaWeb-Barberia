@@ -14,14 +14,39 @@
     <div class="main-content pt-4">
         <div class="container-fluid">
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- Alerta de error por límite desde el backend -->
+            <div th:if="${errorLimite}" class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                <span th:text="${errorLimite}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Encabezado con botón y badge -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
                 <div>
                     <h2 class="fw-bold m-0">Gestión de Personal</h2>
                     <p class="text-muted m-0 small">Administra los usuarios y roles del sistema.</p>
                 </div>
-                <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUsuario">
-                    <i class="fa-solid fa-user-plus me-2"></i> Nuevo Usuario
+                <button class="btn btn-primary shadow-sm d-flex align-items-center gap-2" id="btnNuevoUsuario">
+                    <i class="fa-solid fa-user-plus"></i>
+                    Nuevo Usuario
+                    <span id="badgeContador" class="badge text-white rounded-pill"
+                          style="background-color: rgba(255,255,255,0.25); font-size: 0.75rem;">
+                        …
+                    </span>
                 </button>
+            </div>
+
+            <!-- Barra de progreso de usuarios -->
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="flex-grow-1"
+                     style="height: 5px; background-color: #2d2d3a; border-radius: 99px; overflow: hidden;">
+                    <div id="barraUsuarios"
+                         style="height: 100%; width: 0%; background-color: #f97316;
+                                border-radius: 99px; transition: width 0.5s ease, background-color 0.3s;">
+                    </div>
+                </div>
+                <span id="textoContador" class="text-muted small" style="white-space: nowrap;">cargando…</span>
             </div>
 
             <div class="card shadow-sm border-0 rounded-3">
@@ -175,6 +200,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script th:src="@{/js/usuarios.js}"></script>
 </body>
 </html>
