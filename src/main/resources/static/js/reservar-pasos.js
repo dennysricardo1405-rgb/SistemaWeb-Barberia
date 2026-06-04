@@ -224,17 +224,36 @@ function hacerLogin() {
 // ── Registro desde modal ──────────────────────────────────────────────────────
 async function buscarDniModal() {
     const dni = document.getElementById('regDni').value;
-    if (dni.length !== 8) return;
+
+    if (dni.length !== 8) {
+        alert('El DNI debe tener 8 dígitos');
+        return;
+    }
+
     try {
-        const res = await fetch(`/api/dni/${dni}`);
-        const data = await res.json();
-        document.getElementById('regNombres').value = data.nombres || '';
-        document.getElementById('regApellidos').value = data.apellidos || '';
-    } catch {
-        alert('No se pudo consultar el DNI');
+        const response = await fetch(`/api/clientes/consulta-dni/${dni}`);
+        const data = await response.json();
+
+        console.log(data);
+
+        if (data.success) {
+
+            document.getElementById('regNombres').value =
+                data.datos.nombres || '';
+
+            document.getElementById('regApellidos').value =
+                (data.datos.ape_paterno || '') + ' ' +
+                (data.datos.ape_materno || '');
+
+        } else {
+            alert('No se encontró información para ese DNI');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al consultar el DNI');
     }
 }
-
 async function hacerRegistro() {
     const errEl = document.getElementById('registroError');
     errEl.style.display = 'none';
