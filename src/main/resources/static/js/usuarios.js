@@ -43,11 +43,9 @@ async function actualizarContadorUsuarios() {
         const maximo = 5;
         const porcentaje = (total / maximo) * 100;
 
-        // Badge en el botón
         const badge = document.getElementById('badgeContador');
         if (badge) badge.textContent = `${total}/${maximo}`;
 
-        // Barra de progreso
         const barra = document.getElementById('barraUsuarios');
         const texto = document.getElementById('textoContador');
         if (barra) {

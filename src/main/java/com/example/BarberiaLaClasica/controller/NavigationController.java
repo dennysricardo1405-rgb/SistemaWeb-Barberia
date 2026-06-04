@@ -84,7 +84,7 @@ public class NavigationController {
         return "redirect:/admin/usuarios";
     }
 
-    // ── Contador de usuarios activos (para el badge y barra) ──
+    // ── Contador de usuarios activos (badge y barra) ─────────
     @GetMapping("/admin/usuarios/count")
     @ResponseBody
     public Map<String, Long> contarUsuarios() {
@@ -107,17 +107,38 @@ public class NavigationController {
             model.addAttribute("perfiles", perfilService.listarTodo());
             model.addAttribute("usuarioLogueado", authentication.getName());
             return "usuarios-lista";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errorLimite", "⚠️ El email ya está registrado. Usa uno diferente.");
+            model.addAttribute("usuarios", usuarioService.listarTodos());
+            model.addAttribute("perfiles", perfilService.listarTodo());
+            model.addAttribute("usuarioLogueado", authentication.getName());
+            return "usuarios-lista";
+        } catch (Exception e) {
+            model.addAttribute("errorLimite", "⚠️ Ocurrió un error al guardar. Verifica los datos e intenta de nuevo.");
+            model.addAttribute("usuarios", usuarioService.listarTodos());
+            model.addAttribute("perfiles", perfilService.listarTodo());
+            model.addAttribute("usuarioLogueado", authentication.getName());
+            return "usuarios-lista";
         }
     }
 
     @PostMapping("/admin/usuarios/editar")
     public String editarUsuario(@ModelAttribute Usuario usuario,
-            @RequestParam("perfilId") Long perfilId) {
-        Perfil p = perfilRepository.findById(perfilId)
-                .orElseThrow(() -> new RuntimeException("Perfil no encontrado"));
-        usuario.setPerfil(p);
-        usuarioService.guardar(usuario);
-        return "redirect:/admin/usuarios?editado";
+            @RequestParam("perfilId") Long perfilId,
+            Model model, Authentication authentication) {
+        try {
+            Perfil p = perfilRepository.findById(perfilId)
+                    .orElseThrow(() -> new RuntimeException("Perfil no encontrado"));
+            usuario.setPerfil(p);
+            usuarioService.editarUsuario(usuario);
+            return "redirect:/admin/usuarios?editado";
+        } catch (Exception e) {
+            model.addAttribute("errorLimite", "⚠️ Error al editar. Verifica que el email no esté duplicado.");
+            model.addAttribute("usuarios", usuarioService.listarTodos());
+            model.addAttribute("perfiles", perfilService.listarTodo());
+            model.addAttribute("usuarioLogueado", authentication.getName());
+            return "usuarios-lista";
+        }
     }
 
     @GetMapping("/admin/usuarios/eliminar/{id}")

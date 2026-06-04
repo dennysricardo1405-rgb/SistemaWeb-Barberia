@@ -3,10 +3,8 @@ package com.example.BarberiaLaClasica.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import com.example.BarberiaLaClasica.model.Usuario;
 import com.example.BarberiaLaClasica.repository.UsuarioRepository;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -24,10 +22,15 @@ public class UsuarioService {
     }
 
     public Usuario guardar(Usuario usuario) {
-        // ✅ NUEVO: Validar límite de 5 usuarios activos
+        // Validar límite de 5 usuarios activos
         long totalActivos = usuarioRepository.countByEstado(1);
         if (totalActivos >= 5) {
             throw new IllegalStateException("Límite máximo de 5 usuarios alcanzado.");
+        }
+
+        // Validar email duplicado (solo en creación)
+        if (usuario.getId() == null && usuarioRepository.existsByEmail(usuario.getEmail())) {
+            throw new IllegalArgumentException("El email ya está registrado.");
         }
 
         String passCifrada = passwordEncoder.encode(usuario.getPassword());
@@ -36,7 +39,23 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
-    // ✅ NUEVO: contar usuarios activos para el frontend
+    public Usuario editarUsuario(Usuario usuario) {
+        Usuario existente = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        existente.setNombre(usuario.getNombre());
+        existente.setEmail(usuario.getEmail());
+        existente.setPerfil(usuario.getPerfil());
+
+        // Solo actualiza contraseña si viene una nueva
+        if (usuario.getPassword() != null && !usuario.getPassword().isBlank()) {
+            existente.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        }
+
+        return usuarioRepository.save(existente);
+    }
+
+    // Contar usuarios activos para el frontend
     public long contarActivos() {
         return usuarioRepository.countByEstado(1);
     }
@@ -45,7 +64,6 @@ public class UsuarioService {
         if (idAEliminar.equals(idUsuarioLogueado)) {
             return false;
         }
-
         Optional<Usuario> u = usuarioRepository.findById(idAEliminar);
         if (u.isPresent()) {
             Usuario usuario = u.get();
