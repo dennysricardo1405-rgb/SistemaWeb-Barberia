@@ -3,6 +3,8 @@ package com.example.BarberiaLaClasica.service;
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +22,7 @@ public class BarberoService {
 
     private final String UPLOAD_DIR = System.getProperty("user.dir") + "/uploads/barberos/";
 
+    // ── Métodos existentes ─────────────────────────────────────
     public List<Barbero> listarTodos() {
         return barberoRepository.findAll();
     }
@@ -63,6 +66,22 @@ public class BarberoService {
         barberoRepository.save(barbero);
     }
 
+    // ── NUEVOS MÉTODOS PARA PAGINACIÓN ─────────────────────────
+    public Page<Barbero> listarPaginado(Pageable pageable) {
+        return barberoRepository.findAll(pageable);
+    }
+
+    public Page<Barbero> buscar(String search, Pageable pageable) {
+        if (search == null || search.trim().isEmpty()) {
+            return listarPaginado(pageable);
+        }
+        String term = search.trim();
+        return barberoRepository
+                .findByNombreContainingIgnoreCaseOrEspecialidadContainingIgnoreCaseOrTelefonoContainingIgnoreCase(
+                        term, term, term, pageable);
+    }
+
+    // ── Métodos privados ─────────────────────────────────────
     private String guardarFoto(MultipartFile foto) throws IOException {
         Files.createDirectories(Paths.get(UPLOAD_DIR));
         String ext = obtenerExtension(foto.getOriginalFilename());

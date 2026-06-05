@@ -1,6 +1,10 @@
 package com.example.BarberiaLaClasica.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -71,8 +75,19 @@ public class NavigationController {
 
     // ── Usuarios ─────────────────────────────────────────────
     @GetMapping("/admin/usuarios")
-    public String gestionUsuarios(Model model, Authentication authentication) {
-        model.addAttribute("usuarios", usuarioService.listarTodos());
+    public String gestionUsuarios(Model model, Authentication authentication,
+                                  @RequestParam(defaultValue = "0") int page,
+                                  @RequestParam(defaultValue = "5") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        Page<Usuario> usuariosPage = usuarioService.listarTodosPaginado(pageable);
+
+        model.addAttribute("usuariosPage", usuariosPage);
+        model.addAttribute("usuarios", usuariosPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", usuariosPage.getTotalPages());
+        model.addAttribute("totalItems", usuariosPage.getTotalElements());
+        model.addAttribute("size", size);
         model.addAttribute("perfiles", perfilService.listarTodo());
         model.addAttribute("usuarioLogueado", authentication.getName());
         return "usuarios-lista";
@@ -103,22 +118,13 @@ public class NavigationController {
             return "redirect:/admin/usuarios";
         } catch (IllegalStateException e) {
             model.addAttribute("errorLimite", "⚠️ No puedes agregar más usuarios. El máximo permitido es 5.");
-            model.addAttribute("usuarios", usuarioService.listarTodos());
-            model.addAttribute("perfiles", perfilService.listarTodo());
-            model.addAttribute("usuarioLogueado", authentication.getName());
-            return "usuarios-lista";
+            return cargarModeloUsuarios(model, authentication);
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorLimite", "⚠️ El email ya está registrado. Usa uno diferente.");
-            model.addAttribute("usuarios", usuarioService.listarTodos());
-            model.addAttribute("perfiles", perfilService.listarTodo());
-            model.addAttribute("usuarioLogueado", authentication.getName());
-            return "usuarios-lista";
+            return cargarModeloUsuarios(model, authentication);
         } catch (Exception e) {
             model.addAttribute("errorLimite", "⚠️ Ocurrió un error al guardar. Verifica los datos e intenta de nuevo.");
-            model.addAttribute("usuarios", usuarioService.listarTodos());
-            model.addAttribute("perfiles", perfilService.listarTodo());
-            model.addAttribute("usuarioLogueado", authentication.getName());
-            return "usuarios-lista";
+            return cargarModeloUsuarios(model, authentication);
         }
     }
 
@@ -134,10 +140,7 @@ public class NavigationController {
             return "redirect:/admin/usuarios?editado";
         } catch (Exception e) {
             model.addAttribute("errorLimite", "⚠️ Error al editar. Verifica que el email no esté duplicado.");
-            model.addAttribute("usuarios", usuarioService.listarTodos());
-            model.addAttribute("perfiles", perfilService.listarTodo());
-            model.addAttribute("usuarioLogueado", authentication.getName());
-            return "usuarios-lista";
+            return cargarModeloUsuarios(model, authentication);
         }
     }
 
@@ -145,6 +148,21 @@ public class NavigationController {
     public String eliminarUsuario(@PathVariable("id") Long id) {
         usuarioService.eliminarLogico(id);
         return "redirect:/admin/usuarios?eliminado";
+    }
+
+    // ── Método auxiliar para recargar modelo en caso de error ─
+    private String cargarModeloUsuarios(Model model, Authentication authentication) {
+        Pageable pageable = PageRequest.of(0, 5, Sort.by("id").ascending());
+        Page<Usuario> usuariosPage = usuarioService.listarTodosPaginado(pageable);
+        model.addAttribute("usuariosPage", usuariosPage);
+        model.addAttribute("usuarios", usuariosPage.getContent());
+        model.addAttribute("currentPage", 0);
+        model.addAttribute("totalPages", usuariosPage.getTotalPages());
+        model.addAttribute("totalItems", usuariosPage.getTotalElements());
+        model.addAttribute("size", 5);
+        model.addAttribute("perfiles", perfilService.listarTodo());
+        model.addAttribute("usuarioLogueado", authentication.getName());
+        return "usuarios-lista";
     }
 
     // ── Perfiles/Roles ───────────────────────────────────────

@@ -6,6 +6,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +29,6 @@ import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.repository.SillaSessionRepository;
-
 
 @Service
 public class RecepcionService {
@@ -49,9 +52,9 @@ public class RecepcionService {
 
     // ── Cita de reserva confirmada para hoy de un barbero ─────────────────────
     public Optional<Cita> getCitaReservaHoy(Long barberoId) {
-    return citaRepository.findProximaCitaPorBarberoFechaEstado(
-            barberoId, LocalDate.now(), 2);
-}
+        return citaRepository.findProximaCitaPorBarberoFechaEstado(
+                barberoId, LocalDate.now(), 2);
+    }
 
     // ── Sesión activa de un barbero ───────────────────────────────────────────
     public Optional<SillaSession> getSessionActiva(Long barberoId) {
@@ -59,9 +62,27 @@ public class RecepcionService {
     }
 
     public NotaVenta obtenerNota(Long id) {
-    return notaVentaRepository.findById(id)
-        .orElseThrow(() -> new RuntimeException("Nota no encontrada"));
-}
+        return notaVentaRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Nota no encontrada"));
+    }
+
+    // ── Listar todas las notas (mantener compatibilidad) ─────────────────────
+    public List<NotaVenta> listarNotas() {
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by("fecha").descending());
+        return notaVentaRepository.findAllByOrderByFechaDesc(pageable).getContent();
+    }
+
+    // ── NUEVO: Listar notas con paginación ───────────────────────────────────
+    public Page<NotaVenta> listarNotasPaginadas(Pageable pageable) {
+        return notaVentaRepository.findAllByOrderByFechaDesc(pageable);
+    }
+
+    // ── Reservas Web para Hoy con Paginación (CORREGIDO) ─────────────────────
+    public Page<Cita> listarReservasHoyPaginadas(Pageable pageable) {
+        LocalDate hoy = LocalDate.now();
+        // Estado 2 = Confirmada (cambia el número si tu estado confirmado es diferente)
+        return citaRepository.findByFechaAndEstadoOrderByHoraInicioAsc(hoy, 2, pageable);
+    }
 
     // ── Abrir sesión desde RESERVA ────────────────────────────────────────────
     @Transactional
@@ -77,22 +98,18 @@ public class RecepcionService {
         session.setBarbero(barbero);
         session.setCliente(cita.getCliente());
         session.setServicio(cita.getServicio());
-        session.setCita(cita); // vincula la reserva
+        session.setCita(cita);
         sessionRepository.save(session);
 
-        // Marca la cita como en atención (estado 4)
         cita.setEstado(4);
         citaRepository.save(cita);
     }
 
-    // ── Abrir sesión WALK-IN (sin reserva) ────────────────────────────────────
+    // ── Abrir sesión WALK-IN ─────────────────────────────────────────────────
     @Transactional
     public void ocuparSillaWalkin(Long barberoId, Long clienteId, Long servicioId) {
-        // Bloquear si hay reserva pendiente para hoy
         if (getCitaReservaHoy(barberoId).isPresent())
-            throw new RuntimeException(
-                    "Este barbero tiene una reserva confirmada para hoy. " +
-                            "Usa 'Atender Reserva' o cancela la cita primero.");
+            throw new RuntimeException("Este barbero tiene una reserva confirmada para hoy.");
 
         Barbero barbero = barberoRepository.findById(barberoId)
                 .orElseThrow(() -> new RuntimeException("Barbero no encontrado"));
@@ -123,7 +140,6 @@ public class RecepcionService {
         if (producto.getStock() < cantidad)
             throw new RuntimeException("Stock insuficiente: solo hay " + producto.getStock());
 
-        // Si ya existe, suma cantidad
         consumoRepository.findBySessionId(session.getId()).stream()
                 .filter(c -> c.getProducto().getId().equals(productoId))
                 .findFirst()
@@ -147,20 +163,18 @@ public class RecepcionService {
         consumoRepository.deleteById(consumoId);
     }
 
-    // ── Consumos actuales ─────────────────────────────────────────────────────
     public List<ConsumoSilla> obtenerConsumos(Long barberoId) {
         return getSessionActiva(barberoId)
                 .map(s -> consumoRepository.findBySessionId(s.getId()))
                 .orElse(List.of());
     }
 
-    // ── Finalizar: genera nota y libera barbero ───────────────────────────────
+    // ── Finalizar Atención ────────────────────────────────────────────────────
     @Transactional
     public NotaVenta finalizarAtencion(Long barberoId) {
         SillaSession session = getSessionActiva(barberoId)
                 .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
 
-        // Recarga la sesión fresca desde BD para asegurar que cliente esté cargado
         session = sessionRepository.findByIdConRelaciones(session.getId())
                 .orElseThrow(() -> new RuntimeException("Sesión no encontrada"));
 
@@ -168,11 +182,11 @@ public class RecepcionService {
 
         NotaVenta nota = new NotaVenta();
         nota.setSession(session);
-        nota.setBarbero(session.getBarbero()); // ← agrega esto
+        nota.setBarbero(session.getBarbero());
         nota.setCliente(session.getCliente());
         List<DetalleNotaVenta> detalles = new ArrayList<>();
 
-        // Línea del servicio
+        // Servicio
         DetalleNotaVenta linServicio = new DetalleNotaVenta();
         linServicio.setNotaVenta(nota);
         linServicio.setDescripcion(session.getServicio().getNombre());
@@ -182,18 +196,17 @@ public class RecepcionService {
         linServicio.setTipo("SERVICIO");
         detalles.add(linServicio);
 
-        // Líneas de productos
+        // Productos
         for (ConsumoSilla c : consumos) {
             DetalleNotaVenta lin = new DetalleNotaVenta();
             lin.setNotaVenta(nota);
             lin.setDescripcion(c.getProducto().getNombre());
             lin.setCantidad(c.getCantidad());
-            lin.setPrecioUnitario(c.getProducto().getPrecioVenta()); // este ya es double, no necesita cambio
-            lin.setSubtotal(c.getSubtotal()); // este también
+            lin.setPrecioUnitario(c.getProducto().getPrecioVenta());
+            lin.setSubtotal(c.getSubtotal());
             lin.setTipo("PRODUCTO");
             detalles.add(lin);
 
-            // Descontar stock
             Producto p = c.getProducto();
             p.setStock(p.getStock() - c.getCantidad());
             productoRepository.save(p);
@@ -204,13 +217,11 @@ public class RecepcionService {
         nota.setDetalles(detalles);
         notaVentaRepository.save(nota);
 
-        // Si venía de reserva, marcarla como completada (estado 3)
         if (session.getCita() != null) {
             session.getCita().setEstado(3);
             citaRepository.save(session.getCita());
         }
 
-        // Cerrar sesión y liberar barbero
         session.setEstado(0);
         sessionRepository.save(session);
 
@@ -221,22 +232,15 @@ public class RecepcionService {
         return nota;
     }
 
-    public List<NotaVenta> listarNotas() {
-        return notaVentaRepository.findAllByOrderByFechaDesc();
-    }
-
-
     @Transactional
     public void asociarCliente(Long barberoId, Long clienteId) {
-    SillaSession session = sessionRepository
-        .findByBarberoIdAndEstado(barberoId, 1)
-        .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
+        SillaSession session = sessionRepository
+            .findByBarberoIdAndEstado(barberoId, 1)
+            .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
 
-    clienteRepository.findById(clienteId)
-        .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        clienteRepository.findById(clienteId)
+            .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
-    sessionRepository.actualizarCliente(session.getId(), clienteId);
-    
-    System.out.println(">>> UPDATE ejecutado: sesión " + session.getId() + " → cliente " + clienteId);
-}
+        sessionRepository.actualizarCliente(session.getId(), clienteId);
+    }
 }

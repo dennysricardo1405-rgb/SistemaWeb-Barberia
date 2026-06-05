@@ -1,6 +1,10 @@
 package com.example.BarberiaLaClasica.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -8,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
+
 import jakarta.transaction.Transactional;
 
 import com.example.BarberiaLaClasica.service.BarberoService;
@@ -35,12 +40,14 @@ public class RecepcionController {
     @Autowired
     private RecepcionService recepcionService;
 
-    // ── Panel principal ───────────────────────────────────────────────────────
+    // ── Panel principal con PAGINACIÓN ───────────────────────────────────────
     @GetMapping("/recepcion")
-    public String verPanelRecepcion(Model model) {
+    public String verPanelRecepcion(Model model,
+                                    @RequestParam(defaultValue = "0") int page,
+                                    @RequestParam(defaultValue = "10") int size) {
+
         List<Barbero> barberos = barberoService.listarTodos();
 
-        // Para cada barbero, busca si tiene reserva hoy o sesión activa
         Map<Long, Cita> reservasHoy = new HashMap<>();
         Map<Long, Boolean> enSesion = new HashMap<>();
 
@@ -51,12 +58,24 @@ public class RecepcionController {
                     .ifPresent(s -> enSesion.put(b.getId(), true));
         }
 
+        // Paginación para Reservas Web de Hoy
+        Pageable pageable = PageRequest.of(page, size, Sort.by("horaInicio").ascending());
+        Page<Cita> reservasPage = recepcionService.listarReservasHoyPaginadas(pageable);
+
         model.addAttribute("barberos", barberos);
         model.addAttribute("reservasHoy", reservasHoy);
         model.addAttribute("enSesion", enSesion);
         model.addAttribute("servicios", servicioRepository.findByEstado(1));
         model.addAttribute("productos", productoService.listarTodos());
         model.addAttribute("clientesExistentes", clienteService.listarTodos());
+
+        // Atributos de paginación
+        model.addAttribute("reservasPage", reservasPage);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", reservasPage.getTotalPages());
+        model.addAttribute("totalItems", reservasPage.getTotalElements());
+        model.addAttribute("size", size);
+
         return "secretario/recepcion";
     }
 
@@ -74,19 +93,19 @@ public class RecepcionController {
 
     // ── Walk-in: ocupar silla manualmente ────────────────────────────────────
     @PostMapping("/recepcion/ocupar-silla")
-public String ocuparSilla(
-        @RequestParam Long barberoId,
-        @RequestParam Long servicioId,
-        @RequestParam(required = false) Long clienteId,  // ← agregar esto
-        RedirectAttributes ra) {
-    try {
-        recepcionService.ocuparSillaWalkin(barberoId, clienteId, servicioId);  // ← ya no null
-        ra.addFlashAttribute("exito", "¡Estación abierta!");
-    } catch (Exception e) {
-        ra.addFlashAttribute("error", e.getMessage());
+    public String ocuparSilla(
+            @RequestParam Long barberoId,
+            @RequestParam Long servicioId,
+            @RequestParam(required = false) Long clienteId,
+            RedirectAttributes ra) {
+        try {
+            recepcionService.ocuparSillaWalkin(barberoId, clienteId, servicioId);
+            ra.addFlashAttribute("exito", "¡Estación abierta!");
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/secretario/recepcion";
     }
-    return "redirect:/secretario/recepcion";
-}
 
     // ── API consumos ──────────────────────────────────────────────────────────
     @GetMapping("/recepcion/api-consumos/{barberoId}")
@@ -102,7 +121,6 @@ public String ocuparSilla(
                 "precioUnit", c.getProducto().getPrecioVenta(),
                 "subtotal", c.getSubtotal())).toList();
 
-        // Agrega servicio y cliente de la sesión activa
         Map<String, Object> response = new HashMap<>();
         response.put("consumos", items);
         response.put("total", total);
@@ -156,34 +174,35 @@ public String ocuparSilla(
     }
 
     // ── Notas de venta ────────────────────────────────────────────────────────
-   @GetMapping("/recepcion/notas-venta/{id}/detalle")
-   @ResponseBody
-   public ResponseEntity<Map<String, Object>> detalleNota(@PathVariable Long id) {
-    NotaVenta nota = recepcionService.obtenerNota(id);
+    @GetMapping("/recepcion/notas-venta/{id}/detalle")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> detalleNota(@PathVariable Long id) {
+        NotaVenta nota = recepcionService.obtenerNota(id);
 
-    List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
-        Map.<String, Object>of(
-            "descripcion",    d.getDescripcion(),
-            "cantidad",       d.getCantidad(),
-            "precioUnitario", d.getPrecioUnitario(),
-            "subtotal",       d.getSubtotal(),
-            "tipo",           d.getTipo()
-        )
-    ).toList();
+        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
+            Map.<String, Object>of(
+                "descripcion",    d.getDescripcion(),
+                "cantidad",       d.getCantidad(),
+                "precioUnitario", d.getPrecioUnitario(),
+                "subtotal",       d.getSubtotal(),
+                "tipo",           d.getTipo()
+            )
+        ).toList();
 
-    Map<String, Object> resp = new HashMap<>();
-    resp.put("id",       nota.getId());
-    resp.put("fecha",    nota.getFecha().format(
-                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-    resp.put("cliente",  nota.getCliente() != null
-                            ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
-                            : null);
-    resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
-    resp.put("total",    nota.getTotal());
-    resp.put("detalles", detalles);
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("id",       nota.getId());
+        resp.put("fecha",    nota.getFecha().format(
+                                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        resp.put("cliente",  nota.getCliente() != null
+                                ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
+                                : null);
+        resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
+        resp.put("total",    nota.getTotal());
+        resp.put("detalles", detalles);
 
-    return ResponseEntity.ok(resp);
-}
+        return ResponseEntity.ok(resp);
+    }
+
     @PostMapping("/recepcion/asociar-cliente")
     @ResponseBody
     @Transactional
@@ -198,51 +217,65 @@ public String ocuparSilla(
         }
     }
 
+    // ── NOTAS DE VENTA CON PAGINACIÓN ─────────────────────────────────────────
     @GetMapping("/recepcion/notas-venta")
-    public String notas(Model model) {
-    List<NotaVenta> notas = recepcionService.listarNotas();
-    double totalGeneral = notas.stream().mapToDouble(NotaVenta::getTotal).sum();
-    double promedio = notas.isEmpty() ? 0 : totalGeneral / notas.size();
-    
-    model.addAttribute("notas", notas);
-    model.addAttribute("totalGeneral", totalGeneral);
-    model.addAttribute("promedio", promedio);
-    return "secretario/notas-venta";
-}  
+    public String notas(Model model,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
 
-@GetMapping("/recepcion/ultima-nota")
-@ResponseBody
-public ResponseEntity<Map<String, Object>> ultimaNota(@RequestParam Long barberoId) {
-    // Trae la última nota del barbero
-    NotaVenta nota = recepcionService.listarNotas().stream()
-        .filter(n -> n.getBarbero() != null && n.getBarbero().getId().equals(barberoId))
-        .findFirst()
-        .orElse(null);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
 
-    if (nota == null) return ResponseEntity.notFound().build();
+        Page<NotaVenta> notasPage = recepcionService.listarNotasPaginadas(pageable);
 
-    List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
-        Map.<String, Object>of(
-            "descripcion", d.getDescripcion(),
-            "cantidad",    d.getCantidad(),
-            "subtotal",    d.getSubtotal(),
-            "tipo",        d.getTipo()
-        )
-    ).toList();
+        double totalGeneral = notasPage.getContent().stream()
+                                .mapToDouble(NotaVenta::getTotal)
+                                .sum();
 
-    Map<String, Object> resp = new HashMap<>();
-    resp.put("id",       nota.getId());
-    resp.put("fecha",    nota.getFecha().format(
-                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-    resp.put("cliente",  nota.getCliente() != null
-                            ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
-                            : null);
-    resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
-    resp.put("total",    nota.getTotal());
-    resp.put("detalles", detalles);
+        double promedio = notasPage.getContent().isEmpty() ? 0 :
+                          totalGeneral / notasPage.getContent().size();
 
-    return ResponseEntity.ok(resp);
-}
+        model.addAttribute("notasPage", notasPage);
+        model.addAttribute("notas", notasPage.getContent());
+        model.addAttribute("totalGeneral", totalGeneral);
+        model.addAttribute("promedio", promedio);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", notasPage.getTotalPages());
+        model.addAttribute("totalItems", notasPage.getTotalElements());
+        model.addAttribute("size", size);
 
+        return "secretario/notas-venta";
+    }
 
+    @GetMapping("/recepcion/ultima-nota")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> ultimaNota(@RequestParam Long barberoId) {
+        NotaVenta nota = recepcionService.listarNotas().stream()
+            .filter(n -> n.getBarbero() != null && n.getBarbero().getId().equals(barberoId))
+            .findFirst()
+            .orElse(null);
+
+        if (nota == null) return ResponseEntity.notFound().build();
+
+        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
+            Map.<String, Object>of(
+                "descripcion", d.getDescripcion(),
+                "cantidad",    d.getCantidad(),
+                "subtotal",    d.getSubtotal(),
+                "tipo",        d.getTipo()
+            )
+        ).toList();
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("id",       nota.getId());
+        resp.put("fecha",    nota.getFecha().format(
+                                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        resp.put("cliente",  nota.getCliente() != null
+                                ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
+                                : null);
+        resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
+        resp.put("total",    nota.getTotal());
+        resp.put("detalles", detalles);
+
+        return ResponseEntity.ok(resp);
+    }
 }

@@ -3,6 +3,10 @@ package com.example.BarberiaLaClasica.controller;
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.service.BarberoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -16,16 +20,25 @@ public class BarberoController {
     @Autowired
     private BarberoService barberoService;
 
-    // Cambia esto en tu BarberoController.java
-    private static final String[] DIAS = {
-            "MARTES", "MIERCOLES"
-    };
+    private static final String[] DIAS = {"MARTES", "MIERCOLES"};
 
-    // ── Lista ─────────────────────────────────────────────
+    // ── Lista con Paginación ─────────────────────────────────────
     @GetMapping
-    public String lista(Model model) {
-        model.addAttribute("barberos", barberoService.listarTodos());
+    public String lista(
+            Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("nombre").ascending());
+
+        Page<Barbero> barberosPage = barberoService.buscar(search, pageable);
+
+        model.addAttribute("barberos", barberosPage.getContent());
+        model.addAttribute("barberosPage", barberosPage);
         model.addAttribute("dias", DIAS);
+        model.addAttribute("search", search);
+
         return "barberos/lista";
     }
 
@@ -76,7 +89,6 @@ public class BarberoController {
         return "redirect:/admin/barberos";
     }
 
-    // ── Toggle estado (switch) ────────────────────────────
     @PostMapping("/{id}/estado")
     public String cambiarEstado(@PathVariable Long id, RedirectAttributes redirect) {
         try {

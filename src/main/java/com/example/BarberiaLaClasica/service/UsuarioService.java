@@ -1,6 +1,8 @@
 package com.example.BarberiaLaClasica.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.example.BarberiaLaClasica.model.Usuario;
@@ -21,14 +23,16 @@ public class UsuarioService {
         return usuarioRepository.findByEstado(1);
     }
 
+    public Page<Usuario> listarTodosPaginado(Pageable pageable) {
+        return usuarioRepository.findAll(pageable);
+    }
+
     public Usuario guardar(Usuario usuario) {
-        // Validar límite de 5 usuarios activos
         long totalActivos = usuarioRepository.countByEstado(1);
         if (totalActivos >= 5) {
             throw new IllegalStateException("Límite máximo de 5 usuarios alcanzado.");
         }
 
-        // Validar email duplicado (solo en creación)
         if (usuario.getId() == null && usuarioRepository.existsByEmail(usuario.getEmail())) {
             throw new IllegalArgumentException("El email ya está registrado.");
         }
@@ -47,7 +51,6 @@ public class UsuarioService {
         existente.setEmail(usuario.getEmail());
         existente.setPerfil(usuario.getPerfil());
 
-        // Solo actualiza contraseña si viene una nueva
         if (usuario.getPassword() != null && !usuario.getPassword().isBlank()) {
             existente.setPassword(passwordEncoder.encode(usuario.getPassword()));
         }
@@ -55,7 +58,6 @@ public class UsuarioService {
         return usuarioRepository.save(existente);
     }
 
-    // Contar usuarios activos para el frontend
     public long contarActivos() {
         return usuarioRepository.countByEstado(1);
     }

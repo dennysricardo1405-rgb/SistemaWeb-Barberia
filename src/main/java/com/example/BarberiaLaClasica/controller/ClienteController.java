@@ -7,6 +7,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,9 +25,26 @@ public class ClienteController {
     private ClienteService clienteService;
 
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("clientes", clienteService.listarTodos());
-        return "cliente/clientes-lista";
+    public String listar(Model model,
+                         @RequestParam(defaultValue = "0") int page,
+                         @RequestParam(defaultValue = "10") int size,
+                         @RequestParam(required = false) String search) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fechaRegistro").descending());
+        
+        // MODIFICADO: Ahora pasamos la variable 'search' a la capa de servicio
+        Page<Cliente> clientesPage = clienteService.listarTodosPaginado(pageable, search);
+
+        model.addAttribute("clientesPage", clientesPage);
+        model.addAttribute("clientes", clientesPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", clientesPage.getTotalPages());
+        model.addAttribute("totalItems", clientesPage.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("search", search);
+
+        // MANTENIDO: Tu ruta exacta de Thymeleaf
+        return "cliente/clientes-lista"; 
     }
 
     @PostMapping("/guardar")
@@ -37,6 +58,7 @@ public class ClienteController {
         } catch (Exception e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
+        // MANTENIDO: Redirección original
         return "redirect:/admin/cliente";
     }
 
@@ -62,9 +84,24 @@ public class ClienteController {
         }
     }
 
+    @PostMapping("/actualizar/{id}")
+    public String actualizarCliente(@PathVariable Long id, 
+                                    @ModelAttribute Cliente cliente, 
+                                    RedirectAttributes ra) {
+        try {
+            clienteService.actualizarDesdeAdmin(id, cliente); 
+            ra.addFlashAttribute("exito", "Datos del cliente actualizados con éxito.");
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", "Error al actualizar: " + e.getMessage());
+        }
+        // MANTENIDO: Redirección original
+        return "redirect:/admin/cliente";
+    }
+
     @GetMapping("/estado/{id}")
     public String cambiarEstado(@PathVariable Long id) {
         clienteService.cambiarEstado(id);
+        // MANTENIDO: Redirección original
         return "redirect:/admin/cliente";
     }
 }
