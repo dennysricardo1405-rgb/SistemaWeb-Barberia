@@ -77,8 +77,7 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
     Page<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente, Pageable pageable);
 
-    // Verificar si cliente tiene cita activa distinta a una específica (para
-    // reprogramar)
+    // Verificar si cliente tiene cita activa distinta a una específica
     @Query("""
                 SELECT COUNT(c) > 0 FROM Cita c
                 WHERE c.cliente.id = :clienteId
@@ -88,4 +87,12 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
     boolean tieneOtraReservaActiva(
             @Param("clienteId") Long clienteId,
             @Param("excludeId") Long excludeId);
+
+    // ==================== MÉTODO CORREGIDO ====================
+    // Reservas confirmadas de hoy con paginación
+    Page<Cita> findByFechaAndEstadoOrderByHoraInicioAsc(
+            LocalDate fecha, 
+            int estado, 
+            Pageable pageable);
+
 }

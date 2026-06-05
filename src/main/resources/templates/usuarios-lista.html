@@ -5,6 +5,32 @@
     <title>Usuarios | BarberPro</title>
     <div th:replace="~{layout/sidebar :: head_comun}"></div>
     <link rel="stylesheet" th:href="@{/css/admin-style.css}">
+    <style>
+        .btn-pag {
+            background: #1a1a1a;
+            color: #f0ece0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 5px 14px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-pag:hover { background: #f97316; color: #fff; border-color: #f97316; }
+        .btn-pag.active { background: #f97316; color: #fff; border-color: #f97316; font-weight: bold; }
+        .btn-pag.disabled { opacity: 0.3; pointer-events: none; }
+        .select-size {
+            background: #1a1a1a;
+            color: #f0ece0;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.85rem;
+        }
+        .select-size:focus { outline: none; border-color: #f97316; }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -14,14 +40,37 @@
     <div class="main-content pt-4">
         <div class="container-fluid">
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- Alerta de error -->
+            <div th:if="${errorLimite}" class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                <span th:text="${errorLimite}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Encabezado -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
                 <div>
                     <h2 class="fw-bold m-0">Gestión de Personal</h2>
                     <p class="text-muted m-0 small">Administra los usuarios y roles del sistema.</p>
                 </div>
-                <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUsuario">
-                    <i class="fa-solid fa-user-plus me-2"></i> Nuevo Usuario
+                <button class="btn btn-primary shadow-sm d-flex align-items-center gap-2" id="btnNuevoUsuario">
+                    <i class="fa-solid fa-user-plus"></i>
+                    Nuevo Usuario
+                    <span id="badgeContador" class="badge text-white rounded-pill"
+                          style="background-color: rgba(255,255,255,0.25); font-size: 0.75rem;">…</span>
                 </button>
+            </div>
+
+            <!-- Barra de progreso -->
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="flex-grow-1"
+                     style="height: 5px; background-color: #2d2d3a; border-radius: 99px; overflow: hidden;">
+                    <div id="barraUsuarios"
+                         style="height: 100%; width: 0%; background-color: #f97316;
+                                border-radius: 99px; transition: width 0.5s ease, background-color 0.3s;">
+                    </div>
+                </div>
+                <span id="textoContador" class="text-muted small" style="white-space: nowrap;">cargando…</span>
             </div>
 
             <div class="card shadow-sm border-0 rounded-3">
@@ -39,38 +88,43 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <tr th:if="${#lists.isEmpty(usuarios)}">
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-users-slash me-2"></i>No hay usuarios registrados.
+                                    </td>
+                                </tr>
                                 <tr th:each="u : ${usuarios}">
                                     <td class="ps-4 fw-bold" th:text="${u.id}"></td>
                                     <td th:text="${u.nombre}"></td>
                                     <td th:text="${u.email}"></td>
                                     <td>
                                         <span class="badge bg-light text-dark border"
-                                            th:text="${u.perfil.nombrePerfil}"></span>
+                                              th:text="${u.perfil.nombrePerfil}"></span>
                                     </td>
                                     <td>
                                         <label th:if="${u.email != usuarioLogueado}" class="switch mb-0">
                                             <input type="checkbox" th:checked="${u.estado == 1}"
-                                                th:onchange="'window.location.href=\'/admin/usuarios/estado/' + ${u.id} + '\''">
+                                                   th:onchange="'window.location.href=\'/admin/usuarios/estado/' + ${u.id} + '\''">
                                             <span class="slider"></span>
                                         </label>
                                         <i th:if="${u.email == usuarioLogueado}"
-                                            class="fa-solid fa-lock text-muted fs-6"></i>
+                                           class="fa-solid fa-lock text-muted fs-6"></i>
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-warning rounded-circle me-1"
-                                            onclick="prepararEdicion(this)"
-                                            th:data-id="${u.id}"
-                                            th:data-nombre="${u.nombre}"
-                                            th:data-email="${u.email}"
-                                            th:data-perfil="${u.perfil.id}"
-                                            title="Editar">
+                                                onclick="prepararEdicion(this)"
+                                                th:data-id="${u.id}"
+                                                th:data-nombre="${u.nombre}"
+                                                th:data-email="${u.email}"
+                                                th:data-perfil="${u.perfil.id}"
+                                                title="Editar">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                         <a th:if="${u.email != usuarioLogueado}"
-                                            th:href="@{/admin/usuarios/eliminar/{id}(id=${u.id})}"
-                                            class="btn btn-sm btn-outline-danger rounded-circle"
-                                            onclick="return confirm('¿Dar de baja al usuario?');"
-                                            title="Eliminar">
+                                           th:href="@{/admin/usuarios/eliminar/{id}(id=${u.id})}"
+                                           class="btn btn-sm btn-outline-danger rounded-circle"
+                                           onclick="return confirm('¿Dar de baja al usuario?');"
+                                           title="Eliminar">
                                             <i class="fa-solid fa-trash"></i>
                                         </a>
                                     </td>
@@ -78,6 +132,54 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- ── PAGINACIÓN ─────────────────────────────────── -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-4 py-3 border-top"
+                         th:if="${totalPages > 0}">
+
+                        <!-- Selector tamaño -->
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small">Mostrar</span>
+                            <select class="select-size" onchange="cambiarTamano(this.value)">
+                                <option value="5"  th:selected="${size == 5}">5</option>
+                                <option value="10" th:selected="${size == 10}">10</option>
+                                <option value="20" th:selected="${size == 20}">20</option>
+                            </select>
+                            <span class="text-muted small">por página</span>
+                        </div>
+
+                        <!-- Botones navegación -->
+                        <div class="d-flex align-items-center gap-1">
+                            <a th:href="@{/admin/usuarios(page=${currentPage - 1}, size=${size})}"
+                               class="btn-pag"
+                               th:classappend="${currentPage == 0} ? ' disabled'">
+                                ← Anterior
+                            </a>
+
+                            <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                                <a th:href="@{/admin/usuarios(page=${i}, size=${size})}"
+                                   class="btn-pag"
+                                   th:classappend="${i == currentPage} ? ' active'"
+                                   th:text="${i + 1}">
+                                </a>
+                            </th:block>
+
+                            <a th:href="@{/admin/usuarios(page=${currentPage + 1}, size=${size})}"
+                               class="btn-pag"
+                               th:classappend="${currentPage >= totalPages - 1} ? ' disabled'">
+                                Siguiente →
+                            </a>
+                        </div>
+
+                        <!-- Texto página -->
+                        <div class="text-muted small">
+                            Página <span class="fw-bold" th:text="${currentPage + 1}"></span>
+                            de
+                            <span class="fw-bold" th:text="${totalPages}"></span>
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -175,6 +277,12 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script th:src="@{/js/usuarios.js}"></script>
+    <script>
+        function cambiarTamano(size) {
+            window.location.href = `/admin/usuarios?page=0&size=${size}`;
+        }
+    </script>
 </body>
 </html>
