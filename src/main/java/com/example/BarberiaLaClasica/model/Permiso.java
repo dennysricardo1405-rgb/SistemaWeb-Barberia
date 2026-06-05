@@ -7,17 +7,17 @@ import lombok.Data;
 @Table(name = "permisos")
 @Data
 public class Permiso {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nombre_permiso") // Según tu imagen
-    private String nombre;
+    @Column(name = "nombre_permiso") 
+    private String nombrePermiso; 
 
-    private String descripcion;
+    private String nombre;        
 
-    // CONSTRUCTOR VACÍO (Obligatorio para evitar el error 500)
+    private String descripcion;   
+
     public Permiso() {}
 
 }

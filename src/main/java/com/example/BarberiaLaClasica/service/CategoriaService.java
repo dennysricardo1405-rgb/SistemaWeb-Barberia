@@ -31,6 +31,15 @@ public class CategoriaService {
 
     @Transactional
     public Categoria guardar(Categoria categoria) {
+        // ✅ Validar nombre duplicado
+        boolean existe = categoriaRepository.findAll().stream()
+                .anyMatch(c -> c.getNombre().trim().equalsIgnoreCase(categoria.getNombre().trim())
+                        && !c.getId().equals(categoria.getId())); // Permite editar sin error
+
+        if (existe) {
+            throw new RuntimeException("Ya existe una categoría con el nombre: " + categoria.getNombre());
+        }
+
         return categoriaRepository.save(categoria);
     }
 
