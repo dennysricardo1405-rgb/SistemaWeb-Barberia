@@ -27,30 +27,29 @@ public class ProductoController {
     @Autowired
     private ProductoService productoService;
 
-    
     @Autowired
     private ProveedorService proveedorService;
-    
+
     @Autowired
     private CompraProveedorRepository compraProveedorRepository;
-    
+
     @Autowired
     private CategoriaRepository categoriaRepository;
 
     // 1. LISTAR PRODUCTOS (Se arregló el mapeo duplicado)
     @GetMapping("") // <-- Al dejarlo vacío o "/" mapeará exactamente a: /admin/productos
     public String listarProductos(Model model) {
-    model.addAttribute("productos", productoService.listarTodos());
-    
-    // 1. Enviamos solo las categorías principales (las que no tienen padre)
-    model.addAttribute("categoriasPadre", categoriaRepository.findByPadreIsNullAndActivoTrue());
-    
-    // 2. Enviamos todas las subcategorías activas del sistema
-    model.addAttribute("subcategorias", categoriaRepository.findByPadreIsNotNullAndActivoTrue());
+        model.addAttribute("productos", productoService.listarTodos());
 
-    model.addAttribute("nuevoProducto", new Producto());
-    return "productos/lista";
-}
+        // 1. Enviamos solo las categorías principales (las que no tienen padre)
+        model.addAttribute("categoriasPadre", categoriaRepository.findByPadreIsNullAndActivoTrue());
+
+        // 2. Enviamos todas las subcategorías activas del sistema
+        model.addAttribute("subcategorias", categoriaRepository.findByPadreIsNotNullAndActivoTrue());
+
+        model.addAttribute("nuevoProducto", new Producto());
+        return "productos/lista";
+    }
 
     // 2. GUARDAR / EDITAR PRODUCTO (Mapea a: /admin/productos/guardar)
     @PostMapping("/guardar")
@@ -95,18 +94,13 @@ public class ProductoController {
         return "redirect:/admin/productos?estadoCambiado";
     }
 
-    // =========================================================
     // VISTAS PARA EL FORMULARIO DE COMPRAS A PROVEEDOR
-    // =========================================================
-
-    // Mapea a: /admin/productos/compras
     @GetMapping("/compras")
     public String vistaCompras(Model model) {
         model.addAttribute("productos", productoService.listarActivos());
         model.addAttribute("proveedores", proveedorService.listarTodos());
         model.addAttribute("historialCompras", compraProveedorRepository.findAll());
 
-        // Inicializar objeto para el formulario de compras
         CompraProveedor nuevaCompra = new CompraProveedor();
         nuevaCompra.setProveedor(new Proveedor());
         nuevaCompra.setProducto(new Producto());
@@ -115,9 +109,22 @@ public class ProductoController {
         return "productos/compras";
     }
 
-    // Mapea a: /admin/productos/compras/guardar
     @PostMapping("/compras/guardar")
-    public String guardarCompra(@ModelAttribute("compra") CompraProveedor compra) {
+    public String guardarCompra(
+            @ModelAttribute("compra") CompraProveedor compra,
+            @RequestParam(value = "esCompraDirecta", defaultValue = "false") boolean esCompraDirecta) {
+
+        compra.setEsCompraDirecta(esCompraDirecta);
+
+        if (esCompraDirecta) {
+            compra.setProveedor(null); // ← null real, no objeto vacío
+        } else {
+            // Si viene con id vacío del form, también limpiarlo
+            if (compra.getProveedor() != null && compra.getProveedor().getId() == null) {
+                compra.setProveedor(null);
+            }
+        }
+
         productoService.registrarCompra(compra);
         return "redirect:/admin/productos/compras?compraExitosa";
     }
