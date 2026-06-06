@@ -12,27 +12,22 @@ public class CompraProveedor {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // --- CORRECCIÓN AQUÍ: Cambiamos el String por la relación real @ManyToOne ---
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "proveedor_id", nullable = false)
-    private Proveedor proveedor; 
-
+    @JoinColumn(name = "proveedor_id", nullable = true) 
+    private Proveedor proveedor;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "producto_id", nullable = false)
     private Producto producto;
-
+    @Column(name = "es_compra_directa", nullable = false)
+    private boolean esCompraDirecta = false;
     @Enumerated(EnumType.STRING)
-    private TipoCompra tipoCompra; // PAQUETE o UNIDAD
-
-    private Integer cantidadPaquetes;    // Puede ser null si es unidad suelta
-    private Integer unidadesPorPaquete;  // Puede ser null si es unidad suelta
-    
-    private int totalUnidades;           // Calculado automáticamente
-    private double precioCompraPaquete;  // Si es Unidad, aquí va el precio de esa unidad
+    private TipoCompra tipoCompra;
+    private Integer cantidadPaquetes;
+    private Integer unidadesPorPaquete;
+    private int totalUnidades;
+    private double precioCompraPaquete;
     private double precioVentaUnidad;
-    private double totalInvertido;       // Calculado automáticamente
-    
+    private double totalInvertido;
     private LocalDateTime fechaCompra;
 
     @PrePersist
@@ -44,7 +39,6 @@ public class CompraProveedor {
         PAQUETE, UNIDAD
     }
 
-    // --- MÉTODOS MANUALES PARA EVITAR CONFLICTOS CON THYMELEAF ---
     public Proveedor getProveedor() {
         return this.proveedor;
     }
