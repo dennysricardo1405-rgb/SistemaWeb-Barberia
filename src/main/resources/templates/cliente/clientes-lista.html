@@ -6,12 +6,8 @@
     <div th:replace="~{layout/sidebar :: head_comun}"></div>
     <link rel="stylesheet" th:href="@{/css/dashboard.css}">
     <style>
-        /* Estilos específicos para acoplar la vista al diseño oscuro de La Clásica */
-        .bg-dark-table {
-            background-color: #1a1a1f !important;
-        }
-        
-        /* Contenedor del buscador estilo image_d3ab1c.png */
+        .bg-dark-table { background-color: #1a1a1f !important; }
+
         .search-box-container {
             background-color: #212126 !important;
             border: 1px solid #2d2d35;
@@ -19,85 +15,62 @@
             overflow: hidden;
             height: 38px;
         }
-        .search-icon {
-            color: #888894 !important;
-            font-size: 0.95rem;
-        }
-        .search-input {
-            box-shadow: none !important;
-            outline: none !important;
-            font-size: 0.9rem;
-        }
-        .search-input::placeholder {
-            color: #6c757d !important;
-            opacity: 0.8;
-        }
+        .search-icon { color: #888894 !important; font-size: 0.95rem; }
+        .search-input { box-shadow: none !important; outline: none !important; font-size: 0.9rem; }
+        .search-input::placeholder { color: #6c757d !important; opacity: 0.8; }
 
-        /* Forzar modo oscuro elegante en la tabla */
-        .table-dark-custom {
-            background-color: #1a1a1f !important;
-            color: #ffffff !important;
-        }
-        .table-dark-custom thead tr {
-            background-color: #212126 !important;
-            border-bottom: 2px solid #2d2d35;
-        }
-        .table-dark-custom th {
-            color: #888894 !important;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        .table-dark-custom tbody tr {
-            border-bottom: 1px solid #2d2d35 !important;
-            background-color: #1a1a1f !important;
-        }
-        .table-dark-custom tbody tr:hover {
-            background-color: #212126 !important;
-        }
+        .table-dark-custom { background-color: #1a1a1f !important; color: #ffffff !important; }
+        .table-dark-custom thead tr { background-color: #212126 !important; border-bottom: 2px solid #2d2d35; }
+        .table-dark-custom th { color: #888894 !important; font-weight: 600; letter-spacing: 0.5px; }
+        .table-dark-custom tbody tr { border-bottom: 1px solid #2d2d35 !important; background-color: #1a1a1f !important; }
+        .table-dark-custom tbody tr:hover { background-color: #212126 !important; }
 
-        /* Estilos para los avatars de iniciales */
         .cliente-avatar {
-            width: 35px;
-            height: 35px;
-            background-color: #6f42c1;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-weight: bold;
+            width: 35px; height: 35px;
+            background-color: #6f42c1; color: white;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-weight: bold;
         }
 
-        /* Botones y paginación */
         .btn-pag {
-            background: #212126;
-            color: #ffffff;
-            border: 0;
-            border-radius: 4px;
-            padding: 5px 14px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: inline-block;
+            background: #212126; color: #ffffff; border: 0;
+            border-radius: 4px; padding: 5px 14px; font-size: 0.85rem;
+            cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block;
         }
         .btn-pag:hover { background: #ff6b2b; color: #fff; }
         .btn-pag.active { background: #ff6b2b; color: #fff; font-weight: bold; }
         .btn-pag.disabled { opacity: 0.3; pointer-events: none; }
-        
+
         .select-size {
-            background: #212126;
-            color: #fff;
-            border: 1px solid #2d2d35;
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-size: 0.85rem;
+            background: #212126; color: #fff;
+            border: 1px solid #2d2d35; border-radius: 6px;
+            padding: 4px 8px; font-size: 0.85rem;
         }
         .select-size:focus { outline: none; border-color: #ff6b2b; }
 
-        .btn-naranja {
-            background-color: #ff6b2b !important;
-            color: white !important;
+        .btn-naranja { background-color: #ff6b2b !important; color: white !important; }
+
+        /* Campo solo lectura con estilo diferenciado */
+        .form-control[readonly] {
+            background-color: #f0f0f0 !important;
+            color: #555 !important;
+            cursor: not-allowed;
+        }
+
+        /* Separador sección contraseña */
+        .seccion-password {
+            background: #fff8f5;
+            border: 1px solid #ffe0d0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .seccion-password .seccion-titulo {
+            color: #ff6b2b;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
         }
     </style>
 </head>
@@ -136,17 +109,16 @@
             <div class="d-flex justify-content-end mb-4">
                 <form th:action="@{/admin/cliente}" method="get" class="col-md-4 col-12">
                     <input type="hidden" name="size" id="current-size" th:value="${size}" />
-                    
                     <div class="search-box-container d-flex align-items-center shadow-sm">
                         <span class="search-icon px-3">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
-                        <input type="text" name="search" id="current-search" th:value="${search}" 
-                               class="form-control search-input bg-transparent text-white border-0" 
+                        <input type="text" name="search" id="current-search" th:value="${search}"
+                               class="form-control search-input bg-transparent text-white border-0"
                                placeholder="Buscar por cliente, DNI..."
                                autocomplete="off">
-                        <a th:if="${search != null and !search.isEmpty()}" 
-                           th:href="@{/admin/cliente(size=${size})}" 
+                        <a th:if="${search != null and !search.isEmpty()}"
+                           th:href="@{/admin/cliente(size=${size})}"
                            class="btn border-0 text-muted px-3" title="Limpiar filtro">
                             <i class="fa-solid fa-xmark"></i>
                         </a>
@@ -177,7 +149,8 @@
                                                  th:text="${#strings.substring(c.nombres,0,1).toUpperCase()}">
                                             </div>
                                             <div>
-                                                <div class="fw-bold text-white" th:text="${c.nombres + ' ' + c.apellidos}"></div>
+                                                <div class="fw-bold text-white"
+                                                     th:text="${c.nombres + ' ' + c.apellidos}"></div>
                                             </div>
                                         </div>
                                     </td>
@@ -209,7 +182,8 @@
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(clientes)}">
                                     <td colspan="7" class="text-center text-muted py-5">
-                                        <i class="fa-solid fa-user-group fa-2x mb-3 d-block" style="color:#ff6b2b; opacity:0.3"></i>
+                                        <i class="fa-solid fa-user-group fa-2x mb-3 d-block"
+                                           style="color:#ff6b2b; opacity:0.3"></i>
                                         No se encontraron clientes con los criterios especificados.
                                     </td>
                                 </tr>
@@ -219,7 +193,6 @@
 
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-4 py-3 border-top border-secondary"
                          th:if="${totalPages > 0}">
-
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted small">Mostrar</span>
                             <select class="select-size" id="select-size-pages">
@@ -233,16 +206,14 @@
                         <div class="d-flex align-items-center gap-1">
                             <a th:href="@{/admin/cliente(page=${currentPage - 1}, size=${size}, search=${search})}"
                                class="btn-pag" th:classappend="${currentPage == 0} ? ' disabled'">
-                                 &larr; Anterior
+                                &larr; Anterior
                             </a>
-
                             <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
                                 <a th:href="@{/admin/cliente(page=${i}, size=${size}, search=${search})}"
                                    class="btn-pag" th:classappend="${i == currentPage} ? ' active'"
                                    th:text="${i + 1}">
                                 </a>
                             </th:block>
-
                             <a th:href="@{/admin/cliente(page=${currentPage + 1}, size=${size}, search=${search})}"
                                class="btn-pag" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'">
                                 Siguiente &rarr;
@@ -250,10 +221,9 @@
                         </div>
 
                         <div class="text-muted small">
-                            Página <span class="text-white fw-bold" th:text="${currentPage + 1}">1</span> 
+                            Página <span class="text-white fw-bold" th:text="${currentPage + 1}">1</span>
                             de <span class="text-white fw-bold" th:text="${totalPages}">1</span>
                         </div>
-
                     </div>
 
                 </div>
@@ -261,6 +231,9 @@
         </div>
     </div>
 
+    <!-- ══════════════════════════════════════════ -->
+    <!-- MODAL NUEVO CLIENTE                        -->
+    <!-- ══════════════════════════════════════════ -->
     <div class="modal fade" id="modalNuevo" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow text-dark">
@@ -273,43 +246,71 @@
                 <form id="form-nuevo-cliente">
                     <div class="modal-body p-4">
                         <div class="row g-3">
+
+                            <!-- DNI con buscador -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-uppercase">DNI</label>
                                 <div class="input-dni-group">
-                                    <input type="text" id="dniInput" name="dni" class="form-control" maxlength="8" required>
+                                    <input type="text" id="dniInput" name="dni"
+                                           class="form-control" maxlength="8" required
+                                           placeholder="Ej: 12345678">
                                     <button type="button" id="btnBuscarDni" class="btn-search-dni">
                                         <i class="fa-solid fa-magnifying-glass"></i>
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- Teléfono -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-uppercase">Teléfono</label>
-                                <input type="text" id="telefonoInput" name="telefono" class="form-control" maxlength="9">
+                                <input type="text" id="telefonoInput" name="telefono"
+                                       class="form-control" maxlength="9" placeholder="9 dígitos">
                             </div>
+
+                            <!-- Nombres (readonly, lo llena la API) -->
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-uppercase">Nombres</label>
-                                <input type="text" id="nombresInput" name="nombres" class="form-control" readonly required>
+                                <label class="form-label fw-bold small text-uppercase">
+                                    Nombres
+                                    <span class="text-muted fw-normal" style="font-size:0.75rem;">(desde RENIEC)</span>
+                                </label>
+                                <input type="text" id="nombresInput" name="nombres"
+                                       class="form-control" readonly required
+                                       placeholder="Busca el DNI primero">
                             </div>
+
+                            <!-- Apellidos (readonly, lo llena la API) -->
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-uppercase">Apellidos</label>
-                                <input type="text" id="apellidosInput" name="apellidos" class="form-control" readonly required>
+                                <label class="form-label fw-bold small text-uppercase">
+                                    Apellidos
+                                    <span class="text-muted fw-normal" style="font-size:0.75rem;">(desde RENIEC)</span>
+                                </label>
+                                <input type="text" id="apellidosInput" name="apellidos"
+                                       class="form-control" readonly required
+                                       placeholder="Busca el DNI primero">
                             </div>
+
+                            <!-- Correo -->
                             <div class="col-12">
                                 <label class="form-label fw-bold small text-uppercase">Correo electrónico</label>
-                                <input type="email" id="correoInput" name="correo" class="form-control" placeholder="cliente@gmail.com" required>
+                                <input type="email" id="correoInput" name="correo"
+                                       class="form-control" placeholder="cliente@gmail.com">
                             </div>
+
+                            <!-- Info contraseña automática -->
                             <div class="col-12">
                                 <div class="alert alert-info py-2 mb-0" style="font-size:0.82rem;">
                                     <i class="fa-solid fa-info-circle me-1"></i>
-                                    La contraseña se generará automáticamente: <strong>B + DNI del cliente</strong>
+                                    La contraseña se generará automáticamente:
+                                    <strong>B + DNI del cliente</strong>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" id="btnGuardarCliente" class="btn btn-primary px-4 fw-bold">
-                            Registrar Cliente
+                            <i class="fa-solid fa-user-plus me-1"></i> Registrar Cliente
                         </button>
                     </div>
                 </form>
@@ -317,6 +318,9 @@
         </div>
     </div>
 
+    <!-- ══════════════════════════════════════════ -->
+    <!-- MODAL EDITAR CLIENTE                       -->
+    <!-- ══════════════════════════════════════════ -->
     <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow text-dark">
@@ -330,26 +334,104 @@
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <div class="modal-body p-4">
                         <div class="row g-3">
+
+                            <!-- DNI: solo lectura -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-uppercase">DNI</label>
-                                <input type="text" id="edit-dni" name="dni" class="form-control" readonly>
+                                <input type="text" id="edit-dni" name="dni"
+                                       class="form-control" readonly>
                             </div>
+
+                            <!-- Teléfono: editable -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-uppercase">Teléfono</label>
-                                <input type="text" id="edit-telefono" name="telefono" class="form-control" maxlength="9">
+                                <input type="text" id="edit-telefono" name="telefono"
+                                       class="form-control" maxlength="9" placeholder="9 dígitos">
                             </div>
+
+                            <!-- Nombres: solo lectura (definido por RENIEC) -->
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-uppercase">Nombres</label>
-                                <input type="text" id="edit-nombres" name="nombres" class="form-control" required>
+                                <label class="form-label fw-bold small text-uppercase">
+                                    Nombres
+                                    <span class="text-muted fw-normal" style="font-size:0.75rem;">(definido por RENIEC)</span>
+                                </label>
+                                <input type="text" id="edit-nombres" name="nombres"
+                                       class="form-control" readonly>
                             </div>
+
+                            <!-- Apellidos: solo lectura (definido por RENIEC) -->
                             <div class="col-md-6">
-                                <label class="form-label fw-bold small text-uppercase">Apellidos</label>
-                                <input type="text" id="edit-apellidos" name="apellidos" class="form-control" required>
+                                <label class="form-label fw-bold small text-uppercase">
+                                    Apellidos
+                                    <span class="text-muted fw-normal" style="font-size:0.75rem;">(definido por RENIEC)</span>
+                                </label>
+                                <input type="text" id="edit-apellidos" name="apellidos"
+                                       class="form-control" readonly>
                             </div>
+
+                            <!-- Correo: editable -->
                             <div class="col-12">
                                 <label class="form-label fw-bold small text-uppercase">Correo electrónico</label>
-                                <input type="email" id="edit-correo" name="correo" class="form-control" required>
+                                <input type="email" id="edit-correo" name="correo"
+                                       class="form-control" placeholder="cliente@gmail.com">
                             </div>
+
+                            <!-- ── Sección cambio de contraseña ── -->
+                            <div class="col-12 mt-2">
+                                <div class="seccion-password">
+                                    <div class="seccion-titulo">
+                                        <i class="fa-solid fa-lock me-1"></i>
+                                        Cambiar Contraseña
+                                        <span class="text-muted fw-normal text-lowercase"
+                                              style="font-size:0.75rem; letter-spacing:0;">
+                                            — dejar vacío para no cambiar
+                                        </span>
+                                    </div>
+                                    <div class="row g-3">
+
+                                        <!-- Nueva contraseña -->
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-uppercase">
+                                                Nueva Contraseña
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="password" id="edit-nueva-password"
+                                                       name="nuevaPassword"
+                                                       class="form-control"
+                                                       placeholder="Mín. 6 caracteres"
+                                                       maxlength="30"
+                                                       autocomplete="new-password">
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        onclick="togglePassword('edit-nueva-password', this)"
+                                                        title="Mostrar/ocultar">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Confirmar contraseña -->
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold small text-uppercase">
+                                                Confirmar Contraseña
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="password" id="edit-confirmar-password"
+                                                       class="form-control"
+                                                       placeholder="Repite la contraseña"
+                                                       maxlength="30"
+                                                       autocomplete="new-password">
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        onclick="togglePassword('edit-confirmar-password', this)"
+                                                        title="Mostrar/ocultar">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-0">

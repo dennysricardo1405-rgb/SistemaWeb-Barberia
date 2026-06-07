@@ -31,8 +31,6 @@ public class ClienteController {
                          @RequestParam(required = false) String search) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("fechaRegistro").descending());
-        
-        // MODIFICADO: Ahora pasamos la variable 'search' a la capa de servicio
         Page<Cliente> clientesPage = clienteService.listarTodosPaginado(pageable, search);
 
         model.addAttribute("clientesPage", clientesPage);
@@ -43,8 +41,7 @@ public class ClienteController {
         model.addAttribute("size", size);
         model.addAttribute("search", search);
 
-        // MANTENIDO: Tu ruta exacta de Thymeleaf
-        return "cliente/clientes-lista"; 
+        return "cliente/clientes-lista";
     }
 
     @PostMapping("/guardar")
@@ -58,20 +55,41 @@ public class ClienteController {
         } catch (Exception e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
-        // MANTENIDO: Redirección original
         return "redirect:/admin/cliente";
     }
 
     @PostMapping("/guardar-rapido")
     public ResponseEntity<?> guardarRapido(@RequestBody Map<String, Object> datos) {
         try {
+            String dni      = ((String) datos.get("dni") + "").trim();
+            String nombres  = ((String) datos.get("nombres") + "").trim();
+            String apellidos= ((String) datos.get("apellidos") + "").trim();
+            String telefono = datos.get("telefono") != null ? ((String) datos.get("telefono")).trim() : "";
+            String correo   = datos.get("correo")   != null ? ((String) datos.get("correo")).trim()   : "";
+
+            if (!dni.matches("^\\d{8}$")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El DNI debe tener exactamente 8 dígitos."));
+            }
+            if (nombres.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Los nombres son obligatorios."));
+            }
+            if (apellidos.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Los apellidos son obligatorios."));
+            }
+            if (!telefono.isEmpty() && !telefono.matches("^\\d{9}$")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El teléfono debe tener exactamente 9 dígitos."));
+            }
+            if (!correo.isEmpty() && !correo.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El correo electrónico no es válido."));
+            }
+
             Cliente c = new Cliente();
-            c.setDni((String) datos.get("dni"));
-            c.setNombres((String) datos.get("nombres"));
-            c.setApellidos((String) datos.get("apellidos"));
-            c.setTelefono((String) datos.get("telefono"));
-            String password = "B" + datos.get("dni");
-            clienteService.crearDesdeAdmin(c, password);
+            c.setDni(dni);
+            c.setNombres(nombres);
+            c.setApellidos(apellidos);
+            c.setTelefono(telefono.isEmpty() ? null : telefono);
+            c.setCorreo(correo.isEmpty() ? null : correo);
+            clienteService.crearDesdeAdmin(c, "B" + dni);
 
             Map<String, Object> resp = new HashMap<>();
             resp.put("id", c.getId());
@@ -79,29 +97,60 @@ public class ClienteController {
             resp.put("nombres", c.getNombres());
             resp.put("apellidos", c.getApellidos());
             return ResponseEntity.ok(resp);
+
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PostMapping("/actualizar/{id}")
-    public String actualizarCliente(@PathVariable Long id, 
-                                    @ModelAttribute Cliente cliente, 
+    public String actualizarCliente(@PathVariable Long id,
+                                    @ModelAttribute Cliente cliente,
+                                    @RequestParam(value = "nuevaPassword", required = false) String nuevaPassword,
                                     RedirectAttributes ra) {
         try {
-            clienteService.actualizarDesdeAdmin(id, cliente); 
+            // ── Validaciones backend ──────────────────────────
+            String telefono = cliente.getTelefono() != null ? cliente.getTelefono().trim() : "";
+            String correo   = cliente.getCorreo()   != null ? cliente.getCorreo().trim()   : "";
+
+            if (!telefono.isEmpty() && !telefono.matches("^\\d{9}$")) {
+                ra.addFlashAttribute("error", "El teléfono debe tener exactamente 9 dígitos.");
+                return "redirect:/admin/cliente";
+            }
+            if (!correo.isEmpty() && !correo.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                ra.addFlashAttribute("error", "El correo electrónico no es válido.");
+                return "redirect:/admin/cliente";
+            }
+
+            // Validar nueva contraseña si se proporcionó
+            if (nuevaPassword != null && !nuevaPassword.trim().isEmpty()) {
+                String pwd = nuevaPassword.trim();
+                if (pwd.length() < 6) {
+                    ra.addFlashAttribute("error", "La contraseña debe tener al menos 6 caracteres.");
+                    return "redirect:/admin/cliente";
+                }
+                if (pwd.length() > 30) {
+                    ra.addFlashAttribute("error", "La contraseña no puede superar 30 caracteres.");
+                    return "redirect:/admin/cliente";
+                }
+            }
+
+            cliente.setTelefono(telefono.isEmpty() ? null : telefono);
+            cliente.setCorreo(correo.isEmpty() ? null : correo);
+
+            // ← Pasar la nueva contraseña al service
+            clienteService.actualizarDesdeAdmin(id, cliente, nuevaPassword);
             ra.addFlashAttribute("exito", "Datos del cliente actualizados con éxito.");
+
         } catch (Exception e) {
             ra.addFlashAttribute("error", "Error al actualizar: " + e.getMessage());
         }
-        // MANTENIDO: Redirección original
         return "redirect:/admin/cliente";
     }
 
     @GetMapping("/estado/{id}")
     public String cambiarEstado(@PathVariable Long id) {
         clienteService.cambiarEstado(id);
-        // MANTENIDO: Redirección original
         return "redirect:/admin/cliente";
     }
 }
