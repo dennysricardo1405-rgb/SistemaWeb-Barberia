@@ -60,7 +60,10 @@ public class SecurityConfig {
 
                         // 6. ✅ Área del cliente web
                         .requestMatchers("/cliente/dashboard/**", "/cliente/perfil/**").hasRole("CLIENTE")
-
+                        .requestMatchers("/api/carrito/**").permitAll()
+                        .requestMatchers("/cliente/carrito/**", "/cliente/mis-pedidos").hasRole("CLIENTE")
+                        .requestMatchers("/secretario/pedidos/**").hasAnyRole("SECRETARIO", "ADMINISTRADOR")
+                        .requestMatchers("/api/carrito/**").permitAll()
                         // 7. 🚫 CANDADO GENERAL ADMIN: Todo lo demás (CRUD de productos, barberos,
                         // reportes) es estricto del ADMIN
                         .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
