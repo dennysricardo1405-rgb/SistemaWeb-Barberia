@@ -79,7 +79,9 @@
                 class="nav-link" th:classappend="${activePage == 'proveedores' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-fast"></i> Proveedores
             </a>
-            <a th:if="${#authorization.expression('hasAuthority(''GESTION_INVENTARIO'')')}" href="/admin/productos/compras" class="nav-link" th:classappend="${activePage == 'compras_proveedor' ? ' active' : ''}">
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_INVENTARIO'')')}"
+                href="/admin/productos/compras" class="nav-link"
+                th:classappend="${activePage == 'compras_proveedor' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-ramp-box"></i> Entrada de Stock
             </a>
             <!-- REPORTES -->
@@ -99,7 +101,15 @@
                 th:classappend="${activePage == 'recepcion'} ? ' active' : ''">
                 <i class="fa-solid fa-chair"></i> Recepción Sillas
             </a>
-    
+
+            <a th:href="@{/secretario/pedidos}" sec:authorize="hasRole('SECRETARIO')" class="nav-link"
+                th:classappend="${activePage == 'recepcion_pedidos'} ? ' active' : ''">
+                <i class="fa-solid fa-boxes-packing"></i> Recepción Pedidos
+            </a>
+            <a th:href="@{/secretario/pedidos/aceptados}" sec:authorize="hasRole('SECRETARIO')" class="nav-link"
+                th:classappend="${activePage == 'pedidos_aceptados'} ? ' active' : ''">
+                <i class="fa-solid fa-box-open"></i> Entrega de Pedidos
+            </a>
             <!-- NOTAS DE VENTA ← agregar esto -->
             <a th:href="@{/secretario/recepcion/notas-venta}" sec:authorize="hasRole('SECRETARIO')" class="nav-link"
                 th:classappend="${activePage == 'notas'} ? ' active' : ''">
