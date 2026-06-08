@@ -2,8 +2,12 @@ package com.example.BarberiaLaClasica.service;
 
 import com.example.BarberiaLaClasica.model.*;
 import com.example.BarberiaLaClasica.repository.*;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -70,6 +74,12 @@ public class CitaService {
         LocalTime horaInicio = LocalTime.parse(horaStr);
         LocalTime horaFin = horaInicio.plusMinutes(servicio.getDuracionMinutos());
 
+        long reservasActivas = citaRepository.contarReservasActivasPorCliente(cliente.getId());
+        if (reservasActivas >= 1) {
+            throw new RuntimeException(
+                    "Ya tienes una reserva pendiente o confirmada. " +
+                            "Espera a ser atendido antes de hacer una nueva reserva.");
+        }
         // Verificar que no haya conflicto de horario
         if (citaRepository.existeConflictoHorario(barberoId, fecha, horaInicio, horaFin)) {
             throw new RuntimeException("El horario seleccionado ya no está disponible.");
@@ -172,6 +182,68 @@ public class CitaService {
         }
     }
 
+    // Historial paginado
+    public Page<Cita> obtenerHistorialClientePaginado(String correo, int pagina) {
+        Cliente cliente = clienteRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        Pageable pageable = PageRequest.of(pagina, 5);
+        return citaRepository.findByClienteOrderByFechaDescHoraInicioDesc(cliente, pageable);
+    }
+
+    // Cancelar cita propia del cliente
+    public void cancelarCitaCliente(Long citaId, String correoCliente) {
+        Cita cita = citaRepository.findById(citaId)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+        Cliente cliente = clienteRepository.findByCorreo(correoCliente)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+
+        if (!cita.getCliente().getId().equals(cliente.getId()))
+            throw new RuntimeException("No tienes permiso para cancelar esta cita");
+
+        if (cita.getEstado() != 1 && cita.getEstado() != 2)
+            throw new RuntimeException("Esta cita no puede cancelarse");
+
+        cita.setEstado(0);
+        citaRepository.save(cita);
+    }
+
+    // Reprogramar cita (solo fecha y hora, mismo barbero o nuevo)
+    public void reprogramarCita(Long citaId, String correoCliente,
+            Long nuevoBarberoId, String nuevaFecha,
+            String nuevaHora) {
+        Cita cita = citaRepository.findById(citaId)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+        Cliente cliente = clienteRepository.findByCorreo(correoCliente)
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+        if (cita.isReprogramada())
+            throw new RuntimeException(
+                    "Esta cita ya fue reprogramada una vez. No se puede volver a cambiar.");
+        if (!cita.getCliente().getId().equals(cliente.getId()))
+            throw new RuntimeException("No tienes permiso");
+
+        if (cita.getEstado() != 1 && cita.getEstado() != 2)
+            throw new RuntimeException("Esta cita no puede reprogramarse");
+
+        Barbero barbero = barberoRepository.findById(nuevoBarberoId)
+                .orElseThrow(() -> new RuntimeException("Barbero no encontrado"));
+
+        LocalDate fecha = LocalDate.parse(nuevaFecha);
+        LocalTime horaInicio = LocalTime.parse(nuevaHora);
+        LocalTime horaFin = horaInicio.plusMinutes(cita.getServicio().getDuracionMinutos());
+
+        if (citaRepository.existeConflictoHorario(nuevoBarberoId, fecha, horaInicio, horaFin))
+            throw new RuntimeException("Ese horario ya no está disponible");
+
+        cita.setBarbero(barbero);
+        cita.setFecha(fecha);
+        cita.setHoraInicio(horaInicio);
+        cita.setHoraFin(horaFin);
+        cita.setEstado(1); // vuelve a pendiente para re-confirmación
+        citaRepository.save(cita);
+        cita.setReprogramada(true);
+        citaRepository.save(cita);
+    }
+
     // ── Para el secretario: listar citas pendientes ───────────────────────────
     public List<Cita> listarPendientes() {
         return citaRepository.findByEstadoOrderByFechaAscHoraInicioAsc(1);
@@ -180,4 +252,5 @@ public class CitaService {
     public List<Cita> listarCitasDeHoy() {
         return citaRepository.findByFechaOrderByHoraInicioAsc(LocalDate.now());
     }
+
 }

@@ -26,9 +26,23 @@
             font-size: 0.9rem;
         }
 
-        /* Tabla detalles dentro del modal */
-        .detalle-row-servicio { background: rgba(201,168,76,0.06); }
-        .detalle-row-producto  { background: transparent; }
+        /* Paginación */
+        .pagination .page-link {
+            background: #1a1a1a;
+            color: #f0ece0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .pagination .page-link:hover {
+            background: #c9a84c;
+            color: #111;
+            border-color: #c9a84c;
+        }
+        .pagination .active .page-link {
+            background: #c9a84c;
+            color: #111;
+            border-color: #c9a84c;
+            font-weight: bold;
+        }
 
         /* Modal */
         .modal-content {
@@ -48,7 +62,6 @@
         }
         .buscador-nota:focus { border-color: #c9a84c; outline: none; box-shadow: none; }
 
-        /* Resumen superior */
         .stat-mini {
             background: #141414;
             border: 1px solid rgba(255,255,255,0.04);
@@ -78,7 +91,27 @@
                 </span>
             </div>
 
-
+            <!-- Resumen superior -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="stat-mini">
+                        <div class="text-muted small">Total Registros</div>
+                        <h4 class="text-white mb-0" th:text="${totalItems}"></h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-mini">
+                        <div class="text-muted small">Total del Día / Página</div>
+                        <h4 class="text-success mb-0" th:text="'S/ ' + ${#numbers.formatDecimal(totalGeneral, 1, 2)}"></h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-mini">
+                        <div class="text-muted small">Promedio</div>
+                        <h4 class="text-white mb-0" th:text="'S/ ' + ${#numbers.formatDecimal(promedio, 1, 2)}"></h4>
+                    </div>
+                </div>
+            </div>
 
             <!-- Buscador -->
             <div class="mb-3">
@@ -94,12 +127,11 @@
                         <i class="fa-solid fa-list me-2 text-gold"></i> Listado
                     </h5>
                     <span class="badge bg-secondary font-monospace"
-                          th:text="${notas.size()} + ' registros'">0 registros</span>
+                          th:text="${totalItems} + ' registros'">0 registros</span>
                 </div>
 
                 <div class="card-body p-0">
 
-                    <!-- Con datos -->
                     <div th:if="${!notas.isEmpty()}" class="table-responsive">
                         <table class="table table-hover align-middle mb-0" id="tablaNotas">
                             <thead style="background:#0d0d0d">
@@ -113,53 +145,38 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr th:each="nota : ${notas}"
-                                    class="fila-nota"
+                                <tr th:each="nota : ${notas}" class="fila-nota"
                                     th:data-cliente="${nota.cliente != null ? nota.cliente.nombres + ' ' + nota.cliente.apellidos : ''}"
                                     th:data-barbero="${nota.barbero != null ? nota.barbero.nombre : ''}"
                                     style="border-bottom:1px solid rgba(255,255,255,0.04)">
 
-                                    <!-- ID -->
-                                    <td class="ps-4 text-muted font-monospace small"
-                                        th:text="'#' + ${nota.id}"></td>
-
-                                    <!-- Fecha -->
+                                    <td class="ps-4 text-muted font-monospace small" th:text="'#' + ${nota.id}"></td>
                                     <td>
-                                        <div class="text-white small fw-600"
-                                             th:text="${#temporals.format(nota.fecha, 'dd/MM/yyyy')}"></div>
-                                        <div class="text-muted" style="font-size:0.75rem"
+                                        <div class="text-white small fw-600" th:text="${#temporals.format(nota.fecha, 'dd/MM/yyyy')}"></div>
+                                        <div class="text-muted" style="font-size:0.75rem" 
                                              th:text="${#temporals.format(nota.fecha, 'HH:mm')} + ' hrs'"></div>
                                     </td>
-
-                                    <!-- Cliente -->
                                     <td>
                                         <div th:if="${nota.cliente != null}" class="d-flex align-items-center gap-2">
                                             <div style="width:30px;height:30px;border-radius:50%;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;color:#c9a84c;font-weight:700;font-size:0.78rem;flex-shrink:0"
                                                  th:text="${#strings.substring(nota.cliente.nombres,0,1)}">?</div>
                                             <div>
-                                                <div class="text-white small fw-600"
+                                                <div class="text-white small fw-600" 
                                                      th:text="${nota.cliente.nombres + ' ' + nota.cliente.apellidos}"></div>
                                                 <div class="text-muted font-monospace" style="font-size:0.75rem"
                                                      th:text="${nota.cliente.dni}"></div>
                                             </div>
                                         </div>
-                                        <span th:if="${nota.cliente == null}"
-                                              class="text-muted small">Sin registro</span>
+                                        <span th:if="${nota.cliente == null}" class="text-muted small">Sin registro</span>
                                     </td>
-
-                                    <!-- Barbero -->
                                     <td>
                                         <span class="badge bg-dark border text-light px-2 py-1 small"
                                               th:text="${nota.barbero != null ? '💈 ' + nota.barbero.nombre : '—'}"></span>
                                     </td>
-
-                                    <!-- Total -->
                                     <td class="text-end">
                                         <span class="badge-total"
-                                              th:text="'S/ ' + ${#numbers.formatDecimal(nota.total, 1, 2)}">S/ 0.00</span>
+                                              th:text="'S/ ' + ${#numbers.formatDecimal(nota.total, 1, 2)}"></span>
                                     </td>
-
-                                    <!-- Ver detalle -->
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold"
                                                 style="font-size:0.78rem"
@@ -178,13 +195,71 @@
                         <p class="mb-0">No hay notas de venta registradas aún.</p>
                     </div>
                 </div>
+
+                <!-- PAGINACIÓN -->
+                <div class="card-footer bg-dark border-0 py-3" th:if="${totalPages > 0}">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        
+                        <!-- Selector de cantidad por página -->
+                        <div>
+                            <span class="text-muted me-2 small">Mostrar</span>
+                            <select class="form-select form-select-sm d-inline-block w-auto" 
+                                    onchange="cambiarTamano(this.value)">
+                                <option value="10" th:selected="${size} == 10">10</option>
+                                <option value="15" th:selected="${size} == 15">15</option>
+                                <option value="20" th:selected="${size} == 20">20</option>
+                                <option value="50" th:selected="${size} == 50">50</option>
+                            </select>
+                            <span class="text-muted ms-2 small">por página</span>
+                        </div>
+
+                        <!-- Controles de paginación -->
+                        <nav aria-label="Paginación">
+                            <ul class="pagination pagination-sm mb-0">
+                                <!-- Anterior -->
+                                <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/secretario/recepcion/notas-venta(page=${currentPage-1}, size=${size})}"
+                                       th:if="${currentPage > 0}">
+                                        ← Anterior
+                                    </a>
+                                    <span class="page-link" th:if="${currentPage == 0}">← Anterior</span>
+                                </li>
+
+                                <!-- Números de página -->
+                                <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages-1)}"
+                                    th:classappend="${i == currentPage} ? 'active'">
+                                    <a class="page-link" 
+                                       th:href="@{/secretario/recepcion/notas-venta(page=${i}, size=${size})}"
+                                       th:text="${i + 1}"></a>
+                                </li>
+
+                                <!-- Siguiente -->
+                                <li class="page-item" th:classappend="${currentPage >= totalPages-1} ? 'disabled'">
+                                    <a class="page-link" 
+                                       th:href="@{/secretario/recepcion/notas-venta(page=${currentPage+1}, size=${size})}"
+                                       th:if="${currentPage < totalPages-1}">
+                                        Siguiente →
+                                    </a>
+                                    <span class="page-link" th:if="${currentPage >= totalPages-1}">Siguiente →</span>
+                                </li>
+                            </ul>
+                        </nav>
+
+                        <div class="text-muted small">
+                            Página <span class="fw-bold" th:text="${currentPage + 1}"></span> de 
+                            <span class="fw-bold" th:text="${totalPages}"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div>
     </div>
 
-    <!-- ── MODAL DETALLE ── -->
+    <!-- Modal Detalle (sin cambios) -->
     <div class="modal fade" id="modalDetalle" tabindex="-1">
+        <!-- ... (el modal se mantiene igual que antes) ... -->
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header border-0">
@@ -195,8 +270,6 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-
-                    <!-- Info cabecera -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
                             <div style="background:#0d0d0d;border-radius:8px;padding:12px">
@@ -218,7 +291,6 @@
                         </div>
                     </div>
 
-                    <!-- Tabla detalles -->
                     <div class="table-responsive rounded-3" style="border:1px solid rgba(255,255,255,0.06)">
                         <table class="table table-dark align-middle mb-0 small">
                             <thead style="background:#0a0a0a">
@@ -255,8 +327,8 @@
         document.querySelectorAll('.fila-nota').forEach(fila => {
             const cliente = (fila.dataset.cliente || '').toLowerCase();
             const barbero = (fila.dataset.barbero || '').toLowerCase();
-            fila.style.display =
-                cliente.includes(texto.toLowerCase()) || barbero.includes(texto.toLowerCase())
+            fila.style.display = 
+                cliente.includes(texto.toLowerCase()) || barbero.includes(texto.toLowerCase()) 
                 ? '' : 'none';
         });
     }
@@ -278,8 +350,8 @@
                 tbody.innerHTML += `
                     <tr style="${esServicio ? 'background:rgba(201,168,76,0.06)' : ''}">
                         <td class="ps-3">
-                            ${esServicio
-                                ? '<i class="fa-solid fa-scissors me-2 text-gold" style="font-size:0.75rem"></i>'
+                            ${esServicio 
+                                ? '<i class="fa-solid fa-scissors me-2 text-gold" style="font-size:0.75rem"></i>' 
                                 : '<i class="fa-solid fa-box me-2 text-muted" style="font-size:0.75rem"></i>'}
                             <span class="${esServicio ? 'text-gold fw-bold' : 'text-white'}">${d.descripcion}</span>
                         </td>
@@ -292,6 +364,11 @@
             modalDetalle.show();
         })
         .catch(() => alert('Error al cargar el detalle.'));
+    }
+
+    // Cambiar tamaño de página
+    function cambiarTamano(size) {
+        window.location.href = `/secretario/recepcion/notas-venta?page=0&size=${size}`;
     }
 </script>
 </body>

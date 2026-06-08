@@ -2,8 +2,10 @@ package com.example.BarberiaLaClasica.controller;
 
 import com.example.BarberiaLaClasica.service.CitaService;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
+import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
 import com.example.BarberiaLaClasica.repository.CitaRepository;
+import com.example.BarberiaLaClasica.repository.ClienteRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.data.domain.Page;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -28,6 +31,8 @@ public class CitaReservaController {
     private CitaService citaService;
     @Autowired
     private CitaRepository citaRepository;
+    @Autowired
+    private ClienteRepository clienteRepository;
     // ─────────────────────────────────────────────────────────────────
     // PASO 1-3: Asistente público (sin login requerido)
     // ─────────────────────────────────────────────────────────────────
@@ -112,21 +117,24 @@ public class CitaReservaController {
         if (principal == null)
             return "redirect:/cliente/login";
 
-        // Recupera datos de la sesión
         Long servicioId = toLong(session.getAttribute("preCita_servicioId"));
         Long barberoId = toLong(session.getAttribute("preCita_barberoId"));
 
         if (servicioId == null || barberoId == null)
             return "redirect:/reservar";
 
-        // Carga los nombres/precios para mostrar en el resumen
-        servicioRepository.findById(servicioId).ifPresent(s -> {
-            model.addAttribute("servicio", s);
-        });
-        barberoRepository.findById(barberoId).ifPresent(b -> {
-            model.addAttribute("barbero", b);
+        // ── VALIDACIÓN TEMPRANA: bloquea antes de mostrar el pago ────────
+        String correo = principal.getName();
+        clienteRepository.findByCorreo(correo).ifPresent(cliente -> {
+            long activas = citaRepository.contarReservasActivasPorCliente(cliente.getId());
+            if (activas >= 1) {
+                model.addAttribute("errorReserva",
+                        "Ya tienes una reserva activa. Espera a ser atendido antes de hacer una nueva.");
+            }
         });
 
+        servicioRepository.findById(servicioId).ifPresent(s -> model.addAttribute("servicio", s));
+        barberoRepository.findById(barberoId).ifPresent(b -> model.addAttribute("barbero", b));
         model.addAttribute("fecha", session.getAttribute("preCita_fecha"));
         model.addAttribute("hora", session.getAttribute("preCita_hora"));
         model.addAttribute("servicioId", servicioId);
@@ -173,13 +181,60 @@ public class CitaReservaController {
     // ─────────────────────────────────────────────────────────────────
 
     @GetMapping("/cliente/mis-citas")
-    public String misCitas(Model model, Principal principal) {
+    public String misCitas(
+            @RequestParam(defaultValue = "0") int pagina,
+            Model model, Principal principal) {
         if (principal == null)
             return "redirect:/cliente/login";
-        model.addAttribute("citas", citaService.obtenerHistorialCliente(principal.getName()));
+
+        Page<Cita> paginaCitas = citaService
+                .obtenerHistorialClientePaginado(principal.getName(), pagina);
+
+        model.addAttribute("citas", paginaCitas.getContent());
+        model.addAttribute("paginaActual", pagina);
+        model.addAttribute("totalPaginas", paginaCitas.getTotalPages());
+        List<Map<String, Object>> barberosDto = barberoRepository.findByEstado(1)
+                .stream()
+                .map(b -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", b.getId());
+                    m.put("nombre", b.getNombre());
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        model.addAttribute("barberos", barberosDto);
         return "cliente/mis-citas";
     }
 
+    @PostMapping("/cliente/citas/{id}/cancelar")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> cancelarCitaCliente(
+            @PathVariable Long id, Principal principal) {
+        try {
+            citaService.cancelarCitaCliente(id, principal.getName());
+            return ResponseEntity.ok(Map.of("ok", "true"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/cliente/citas/{id}/reprogramar")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> reprogramarCita(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> datos,
+            Principal principal) {
+        try {
+            citaService.reprogramarCita(
+                    id, principal.getName(),
+                    Long.parseLong(datos.get("barberoId")),
+                    datos.get("fecha"),
+                    datos.get("hora"));
+            return ResponseEntity.ok(Map.of("ok", "true"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
     // ─────────────────────────────────────────────────────────────────
     // Secretario: gestión de citas
     // ─────────────────────────────────────────────────────────────────

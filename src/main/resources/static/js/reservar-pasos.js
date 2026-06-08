@@ -1,7 +1,7 @@
 // ── Estado global de la reserva ──────────────────────────────────────────────
 const reserva = {
     servicioId: null, servicioNombre: '', servicioPrecio: '',
-    barberoId: null,  barberoNombre: '',
+    barberoId: null, barberoNombre: '',
     fecha: '', hora: ''
 };
 
@@ -39,7 +39,7 @@ function actualizarProgress(paso) {
 function seleccionarServicio(el) {
     document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
     el.classList.add('selected');
-    reserva.servicioId     = el.dataset.id;
+    reserva.servicioId    = el.dataset.id;
     reserva.servicioNombre = el.dataset.nombre;
     reserva.servicioPrecio = el.dataset.precio;
     document.getElementById('btnSiguiente1').disabled = false;
@@ -55,22 +55,20 @@ function seleccionarBarbero(el) {
     el.classList.add('selected');
     const icon = el.querySelector('.check-icon');
     if (icon) icon.style.display = 'block';
-    reserva.barberoId     = el.dataset.id;
+    reserva.barberoId    = el.dataset.id;
     reserva.barberoNombre = el.dataset.nombre;
     document.getElementById('btnSiguiente2').disabled = false;
 }
 
 // ── Paso 3: Fecha mínima y carga de horas ────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    const hoy = new Date();
+    const hoy    = new Date();
     const hoyStr = hoy.toISOString().split('T')[0];
 
-    // Fecha mínima: hoy
     document.getElementById('fechaInput').min = hoyStr;
 
-    // Fecha máxima: último día del mes actual + 2 meses
-    const mesesPermitidos = 2; // ← cambia este número según necesites
-    const fechaMax = new Date(hoy.getFullYear(), hoy.getMonth() + 1 + mesesPermitidos, 0);
+    const mesesPermitidos = 2;
+    const fechaMax    = new Date(hoy.getFullYear(), hoy.getMonth() + 1 + mesesPermitidos, 0);
     const fechaMaxStr = fechaMax.toISOString().split('T')[0];
     document.getElementById('fechaInput').max = fechaMaxStr;
 });
@@ -81,10 +79,10 @@ async function cargarHoras() {
 
     reserva.fecha = fecha;
     reserva.hora  = '';
-    document.getElementById('btnSiguiente3').disabled = true;
-    document.getElementById('loadingHoras').style.display   = 'block';
-    document.getElementById('horasContainer').style.display = 'none';
-    document.getElementById('sinHoras').style.display       = 'none';
+    document.getElementById('btnSiguiente3').disabled        = true;
+    document.getElementById('loadingHoras').style.display    = 'block';
+    document.getElementById('horasContainer').style.display  = 'none';
+    document.getElementById('sinHoras').style.display        = 'none';
 
     const res  = await fetch(`/api/citas/horas-disponibles?barberoId=${reserva.barberoId}&fecha=${fecha}`);
     const data = await res.json();
@@ -101,7 +99,6 @@ async function cargarHoras() {
     const grid = document.getElementById('horasGrid');
     grid.innerHTML = '';
 
-    // Sin slots en absoluto (día fuera de rango, etc.)
     if (slots.length === 0) {
         document.getElementById('sinHoras').style.display = 'block';
         return;
@@ -111,9 +108,20 @@ async function cargarHoras() {
         const btn = document.createElement('button');
         btn.textContent = s.hora;
 
-        if (s.disponible) {
+        const esHoy = document.getElementById('fechaInput').value ===
+            new Date().toISOString().split('T')[0];
+        const [hh, mm] = s.hora.split(':').map(Number);
+        const ahora = new Date();
+        const yaFue = esHoy && (hh < ahora.getHours() ||
+            (hh === ahora.getHours() && mm <= ahora.getMinutes()));
+
+        if (yaFue) {
+            btn.className = 'hora-btn ocupada confirmada';
+            btn.disabled  = true;
+            btn.title     = 'Hora no disponible';
+        } else if (s.disponible) {
             btn.className = 'hora-btn';
-            btn.onclick = () => {
+            btn.onclick   = () => {
                 document.querySelectorAll('.hora-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
                 reserva.hora = s.hora;
@@ -132,7 +140,6 @@ async function cargarHoras() {
         grid.appendChild(btn);
     });
 
-    // Aviso de "sin horas" solo si TODAS están ocupadas
     const hayLibres = slots.some(s => s.disponible);
     if (!hayLibres) {
         document.getElementById('sinHoras').style.display = 'block';
@@ -159,11 +166,11 @@ function formatearFecha(f) {
 
 // ── Proceder al pago ──────────────────────────────────────────────────────────
 async function procederAlPago() {
-    const res = await fetch('/api/citas/pre-reserva', {
+    const res  = await fetch('/api/citas/pre-reserva', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': getCsrfToken()   // ← ya usa el meta tag
+            'X-CSRF-TOKEN': getCsrfToken()
         },
         body: JSON.stringify({
             servicioId: reserva.servicioId,
@@ -193,9 +200,32 @@ function showTab(tab) {
 
 // ── Login desde modal ─────────────────────────────────────────────────────────
 function hacerLogin() {
-    const email = document.getElementById('loginEmail').value;
+    const email = document.getElementById('loginEmail').value.trim();
     const pass  = document.getElementById('loginPassword').value;
-    document.getElementById('loginError').style.display = 'none';
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+
+    // ── Validaciones ──
+    if (!email) {
+        errEl.textContent   = 'El correo es obligatorio.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (email.length > 30) {
+        errEl.textContent   = 'El correo no puede superar 30 caracteres.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!pass || pass.length < 6) {
+        errEl.textContent   = 'La contraseña debe tener al menos 6 caracteres.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (pass.length > 30) {
+        errEl.textContent   = 'La contraseña no puede superar 30 caracteres.';
+        errEl.style.display = 'block';
+        return;
+    }
 
     const form = document.createElement('form');
     form.method = 'POST';
@@ -209,43 +239,92 @@ function hacerLogin() {
     form.submit();
 }
 
-// ── Registro desde modal ──────────────────────────────────────────────────────
+// ── Buscar DNI modal ──────────────────────────────────────────────────────────
 async function buscarDniModal() {
     const dni = document.getElementById('regDni').value;
-    if (dni.length !== 8) return;
+
+    if (dni.length !== 8) {
+        alert('El DNI debe tener 8 dígitos');
+        return;
+    }
+
     try {
-        const res  = await fetch(`/api/dni/${dni}`);
-        const data = await res.json();
-        document.getElementById('regNombres').value   = data.nombres   || '';
-        document.getElementById('regApellidos').value = data.apellidos || '';
-    } catch {
-        alert('No se pudo consultar el DNI');
+        const response = await fetch(`/api/clientes/consulta-dni/${dni}`);
+        const data     = await response.json();
+
+        if (data.success) {
+            document.getElementById('regNombres').value   = data.datos.nombres || '';
+            document.getElementById('regApellidos').value =
+                (data.datos.ape_paterno || '') + ' ' + (data.datos.ape_materno || '');
+        } else {
+            alert('No se encontró información para ese DNI');
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Error al consultar el DNI');
     }
 }
 
+// ── Registro desde modal ──────────────────────────────────────────────────────
 async function hacerRegistro() {
-    const errEl = document.getElementById('registroError');
+    const errEl   = document.getElementById('registroError');
+    const dni     = document.getElementById('regDni').value.trim();
+    const nombres = document.getElementById('regNombres').value.trim();
+    const correo  = document.getElementById('regCorreo').value.trim();
+    const pass    = document.getElementById('regPassword').value;
     errEl.style.display = 'none';
 
+    // ── Validaciones ──
+    if (!dni || dni.length !== 8) {
+        errEl.textContent   = 'Debes buscar un DNI válido de 8 dígitos.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!nombres) {
+        errEl.textContent   = 'Debes buscar el DNI primero para obtener los nombres.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!correo) {
+        errEl.textContent   = 'El correo es obligatorio.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (correo.length > 30) {
+        errEl.textContent   = 'El correo no puede superar 30 caracteres.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!pass || pass.length < 6) {
+        errEl.textContent   = 'La contraseña debe tener al menos 6 caracteres.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (pass.length > 30) {
+        errEl.textContent   = 'La contraseña no puede superar 30 caracteres.';
+        errEl.style.display = 'block';
+        return;
+    }
+
     const body = new URLSearchParams({
-        dni:           document.getElementById('regDni').value,
-        nombres:       document.getElementById('regNombres').value,
+        dni:           dni,
+        nombres:       nombres,
         apellidos:     document.getElementById('regApellidos').value,
         telefono:      document.getElementById('regTelefono').value,
-        correo:        document.getElementById('regCorreo').value,
-        passwordPlana: document.getElementById('regPassword').value,
+        correo:        correo,
+        passwordPlana: pass,
         _csrf:         getCsrfToken()
     });
 
     const res = await fetch('/cliente/registro', { method: 'POST', body });
     if (res.redirected && res.url.includes('login')) {
-        document.getElementById('loginEmail').value    = document.getElementById('regCorreo').value;
-        document.getElementById('loginPassword').value = document.getElementById('regPassword').value;
+        document.getElementById('loginEmail').value    = correo;
+        document.getElementById('loginPassword').value = pass;
         showTab('login');
         hacerLogin();
     } else {
-        errEl.textContent    = 'Error al registrarse. Verifica los datos.';
-        errEl.style.display  = 'block';
+        errEl.textContent   = 'Error al registrarse. Verifica los datos.';
+        errEl.style.display = 'block';
     }
 }
 

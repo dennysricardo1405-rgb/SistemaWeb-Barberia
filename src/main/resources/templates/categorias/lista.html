@@ -31,6 +31,11 @@
                 <i class="fa-solid fa-circle-info me-2"></i> Estado de la categoría actualizado correctamente.
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="fa-solid fa-circle-xmark me-2"></i>
+                <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
 
             <div class="card shadow-sm border-0 rounded-3">
                 <div class="card-body p-0">

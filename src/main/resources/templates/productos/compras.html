@@ -56,7 +56,7 @@
                                     <td class="ps-4 font-monospace text-muted"
                                         th:text="${#temporals.format(c.fechaCompra, 'dd/MM/yyyy HH:mm')}"></td>
                                     <td class="fw-semibold text-white"
-                                        th:text="${c.proveedor.id == 1 ? 'COMPRA DIRECTA (ADMIN)' : c.proveedor.nombre}">
+                                        th:text="${c.esCompraDirecta ? 'COMPRA DIRECTA (ADMIN)' : c.proveedor.nombre}">
                                     </td>
                                     <td>
                                         <span class="text-white d-block" th:text="${c.producto.nombre}"></span>
@@ -102,15 +102,37 @@
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
                                 <label class="form-label-custom">Proveedor u Origen de Fondos</label>
-                                <select th:field="*{proveedor.id}" class="form-select custom-input" required>
-    <option value="">-- Selecciona un proveedor --</option>
-    <option th:each="prov : ${proveedores}"
-            th:value="${prov.id}"
-            th:text="${prov.nombre}">
-    </option>
-</select>
 
+                                <!-- Toggle compra directa -->
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" id="toggleCompraDirecta"
+                                            name="esCompraDirecta" onchange="toggleProveedor(this.checked)">
+                                        <label class="form-check-label text-white-50 small" for="toggleCompraDirecta">
+                                            Compra directa (Administrador)
+                                        </label>
+                                    </div>
+                                </div>
 
+                                <!-- Select proveedor (se oculta si es compra directa) -->
+                                <div id="wrapperProveedor">
+                                    <select th:field="*{proveedor.id}" class="form-select custom-input"
+                                        id="selectProveedor">
+                                        <option value="">-- Selecciona un proveedor --</option>
+                                        <option th:each="prov : ${proveedores}" th:value="${prov.id}"
+                                            th:text="${prov.nombre}">
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- Badge que aparece cuando es compra directa -->
+                                <div id="badgeCompraDirecta" style="display:none;">
+                                    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded-3"
+                                        style="background:rgba(255,165,0,0.1); border:1px solid rgba(255,165,0,0.3);">
+                                        <i class="fa-solid fa-user-shield" style="color:#ffa500;"></i>
+                                        <span class="fw-bold" style="color:#ffa500;">COMPRA DIRECTA (ADMIN)</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-md-6">

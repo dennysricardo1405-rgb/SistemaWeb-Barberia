@@ -12,20 +12,19 @@ import java.util.Optional;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
-    
     @Query("SELECT COUNT(u) > 0 FROM Usuario u WHERE u.email = :email")
     boolean existsByEmail(@Param("email") String email);
 
-    
     @Query("SELECT u FROM Usuario u WHERE u.estado = :estado")
     List<Usuario> findByEstado(@Param("estado") Integer estado);
 
-    
     @Query("SELECT u FROM Usuario u WHERE u.email = :email")
     Optional<Usuario> findByEmail(@Param("email") String email);
 
-   
     @Query("SELECT u FROM Usuario u WHERE u.perfil.id = :perfilId")
     List<Usuario> findByPerfilId(@Param("perfilId") Long perfilId);
-}
 
+    // ✅ NUEVO: contar usuarios por estado
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.estado = :estado")
+    long countByEstado(@Param("estado") Integer estado);
+}

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/admin/categorias")
@@ -18,30 +19,36 @@ public class CategoriaController {
     @GetMapping
     public String listarCategorias(Model model) {
         model.addAttribute("categorias", categoriaService.listarTodas());
-        
-        // Listamos las principales activas por si el admin quiere crear una subcategoría dentro de ellas
+
+        // Listamos las principales activas por si el admin quiere crear una
+        // subcategoría dentro de ellas
         model.addAttribute("categoriasPrincipales", categoriaService.listarPrincipalesActivas());
-        
+
         // Objeto vacío para el formulario de creación/modal
-        model.addAttribute("nuevaCategoria", new Categoria()); 
-        
-        return "categorias/lista"; 
+        model.addAttribute("nuevaCategoria", new Categoria());
+
+        return "categorias/lista";
     }
 
     // Guardar tanto Categorías como Subcategorías
     // Modifica este método en tu CategoriaController.java
 
-@PostMapping("/guardar")
-public String guardarCategoria(@ModelAttribute("nuevaCategoria") Categoria categoria) {
-    // --- AQUÍ ESTÁ EL ARREGLO CONTRA EL ERROR 500 ---
-    // Si el objeto padre viene instanciado pero su ID está vacío o es nulo, lo limpiamos a null
-    if (categoria.getPadre() != null && (categoria.getPadre().getId() == null || categoria.getPadre().getId() == 0)) {
-        categoria.setPadre(null);
+    @PostMapping("/guardar")
+    public String guardarCategoria(@ModelAttribute("nuevaCategoria") Categoria categoria,
+            RedirectAttributes ra) {
+        if (categoria.getPadre() != null &&
+                (categoria.getPadre().getId() == null || categoria.getPadre().getId() == 0)) {
+            categoria.setPadre(null);
+        }
+
+        try {
+            categoriaService.guardar(categoria);
+            ra.addFlashAttribute("exito", "¡Operación realizada con éxito!");
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/categorias";
     }
-    
-    categoriaService.guardar(categoria);
-    return "redirect:/admin/categorias?exito";
-}
 
     // Switch de estado activo/inactivo
     @GetMapping("/estado/{id}")

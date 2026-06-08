@@ -1,19 +1,223 @@
 // ============================================================
-// clientes.js
-// Ruta: static/js/clientes.js
+// clientes.js — con validaciones y cambio de contraseña
 // ============================================================
 
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Solo números en DNI y teléfonos ──────────────────────
+    const dniInput = document.getElementById('dniInput');
+    if (dniInput) {
+        dniInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    }
+
+    const tlfInput = document.getElementById('telefonoInput');
+    if (tlfInput) {
+        tlfInput.addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value.length > 9) this.value = this.value.slice(0, 9);
+        });
+    }
+
+    const editTlf = document.getElementById('edit-telefono');
+    if (editTlf) {
+        editTlf.addEventListener('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if (this.value.length > 9) this.value = this.value.slice(0, 9);
+        });
+    }
+
+    // ── Buscar DNI ───────────────────────────────────────────
+    const btnBuscarDni = document.getElementById('btnBuscarDni');
+    if (btnBuscarDni) {
+        btnBuscarDni.addEventListener('click', buscarDni);
+    }
+
+    // ── Guardar nuevo cliente ────────────────────────────────
+    const btnGuardarCliente = document.getElementById('btnGuardarCliente');
+    if (btnGuardarCliente) {
+        btnGuardarCliente.addEventListener('click', guardarCliente);
+    }
+
+    // ── Paginación ───────────────────────────────────────────
+    const selectSize = document.getElementById('select-size-pages');
+    if (selectSize) {
+        selectSize.addEventListener('change', function () {
+            const currentSearch = document.getElementById('current-search').value || '';
+            window.location.href = `/admin/cliente?page=0&size=${this.value}&search=${encodeURIComponent(currentSearch)}`;
+        });
+    }
+
+    // ── Botones editar ───────────────────────────────────────
+    document.querySelectorAll('.edit-client-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            prepararEdicionCliente(this);
+        });
+    });
+
+    // ── Switches de estado ───────────────────────────────────
+    document.querySelectorAll('.status-switch').forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            const targetUrl = this.getAttribute('data-url');
+            if (targetUrl) window.location.href = targetUrl;
+        });
+    });
+
+    // ── Validar modal editar al submit ───────────────────────
+    const formEditar = document.getElementById('form-editar');
+    if (formEditar) {
+        formEditar.addEventListener('submit', function (e) {
+            if (!validarFormularioEditar()) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // ── Limpiar al cerrar modales ────────────────────────────
+    document.getElementById('modalNuevo')?.addEventListener('hidden.bs.modal', () => {
+        limpiarErrores('form-nuevo-cliente');
+        ['dniInput', 'nombresInput', 'apellidosInput', 'telefonoInput', 'correoInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        dniInput?.classList.remove('is-valid', 'is-invalid');
+    });
+
+    document.getElementById('modalEditar')?.addEventListener('hidden.bs.modal', () => {
+        limpiarErrores('form-editar');
+        document.getElementById('edit-nueva-password').value    = '';
+        document.getElementById('edit-confirmar-password').value = '';
+    });
+});
+
+// ── Helpers ───────────────────────────────────────────────────
+function mostrarError(input, mensaje) {
+    input.classList.add('is-invalid');
+    if (!input.parentNode.querySelector('.invalid-feedback')) {
+        const div = document.createElement('div');
+        div.className = 'invalid-feedback';
+        div.textContent = mensaje;
+        input.parentNode.appendChild(div);
+    }
+}
+
+function limpiarErrores(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    form.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
+}
+
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon  = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+
+// ── Validar formulario nuevo ──────────────────────────────────
+function validarFormularioNuevo() {
+    limpiarErrores('form-nuevo-cliente');
+    let valido = true;
+
+    const dni      = document.getElementById('dniInput');
+    const nombres  = document.getElementById('nombresInput');
+    const apellidos= document.getElementById('apellidosInput');
+    const telefono = document.getElementById('telefonoInput');
+    const correo   = document.getElementById('correoInput');
+
+    if (!dni.value.trim() || !/^\d{8}$/.test(dni.value.trim())) {
+        mostrarError(dni, 'Debes buscar un DNI válido de 8 dígitos.');
+        valido = false;
+    }
+    if (!nombres.value.trim()) {
+        mostrarError(nombres, 'Debes buscar el DNI primero para obtener los nombres.');
+        valido = false;
+    }
+    if (!apellidos.value.trim()) {
+        mostrarError(apellidos, 'Debes buscar el DNI primero para obtener los apellidos.');
+        valido = false;
+    }
+    if (telefono.value.trim() && !/^\d{9}$/.test(telefono.value.trim())) {
+        mostrarError(telefono, 'El teléfono debe tener exactamente 9 dígitos.');
+        valido = false;
+    }
+    const correoVal = correo.value.trim();
+    if (correoVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoVal)) {
+        mostrarError(correo, 'Ingresa un correo electrónico válido.');
+        valido = false;
+    }
+
+    return valido;
+}
+
+// ── Validar formulario editar ─────────────────────────────────
+function validarFormularioEditar() {
+    limpiarErrores('form-editar');
+    let valido = true;
+
+    const telefono         = document.getElementById('edit-telefono');
+    const correo           = document.getElementById('edit-correo');
+    const nuevaPassword    = document.getElementById('edit-nueva-password');
+    const confirmarPassword= document.getElementById('edit-confirmar-password');
+
+    // Teléfono: opcional, si se llena 9 dígitos
+    if (telefono.value.trim() && !/^\d{9}$/.test(telefono.value.trim())) {
+        mostrarError(telefono, 'El teléfono debe tener exactamente 9 dígitos.');
+        valido = false;
+    }
+
+    // Correo: opcional, si se llena formato válido
+    const correoVal = correo.value.trim();
+    if (correoVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoVal)) {
+        mostrarError(correo, 'Ingresa un correo electrónico válido.');
+        valido = false;
+    }
+
+    // Contraseña: opcional, si se llena validar longitud y coincidencia
+    const pwdVal     = nuevaPassword.value.trim();
+    const confirmVal = confirmarPassword.value.trim();
+
+    if (pwdVal) {
+        if (pwdVal.length < 6) {
+            mostrarError(nuevaPassword, 'La contraseña debe tener al menos 6 caracteres.');
+            valido = false;
+        } else if (pwdVal.length > 30) {
+            mostrarError(nuevaPassword, 'La contraseña no puede superar 30 caracteres.');
+            valido = false;
+        } else if (pwdVal !== confirmVal) {
+            mostrarError(confirmarPassword, 'Las contraseñas no coinciden.');
+            valido = false;
+        }
+    } else if (confirmVal) {
+        // Si llenó confirmar pero no nueva
+        mostrarError(nuevaPassword, 'Escribe primero la nueva contraseña.');
+        valido = false;
+    }
+
+    return valido;
+}
+
+// ── Buscar DNI ────────────────────────────────────────────────
 async function buscarDni() {
     const dniInput = document.getElementById('dniInput');
     const btn      = document.getElementById('btnBuscarDni');
-    const dni      = dniInput.value;
+    const dni      = dniInput.value.trim();
 
-    if (dni.length !== 8) {
-        alert('El DNI debe tener 8 dígitos.');
+    document.getElementById('nombresInput').value   = '';
+    document.getElementById('apellidosInput').value = '';
+
+    if (!/^\d{8}$/.test(dni)) {
+        mostrarError(dniInput, 'El DNI debe tener exactamente 8 dígitos numéricos.');
         return;
     }
 
-    // Estado de carga
     btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
     btn.disabled  = true;
 
@@ -23,35 +227,35 @@ async function buscarDni() {
 
         if (data.success) {
             document.getElementById('nombresInput').value   = data.datos.nombres;
-            document.getElementById('apellidosInput').value =
-                data.datos.ape_paterno + ' ' + data.datos.ape_materno;
+            document.getElementById('apellidosInput').value = data.datos.ape_paterno + ' ' + data.datos.ape_materno;
             dniInput.classList.add('is-valid');
             dniInput.classList.remove('is-invalid');
+            dniInput.parentNode.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
         } else {
-            alert('No se encontró información para ese DNI.');
-            dniInput.classList.add('is-invalid');
-            dniInput.classList.remove('is-valid');
+            mostrarError(dniInput, 'No se encontró información para ese DNI.');
         }
     } catch (error) {
-        console.error('Error:', error);
-        alert('Hubo un problema al conectar con el servicio de DNI.');
+        mostrarError(dniInput, 'Problema al conectar con el servicio de DNI.');
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
         btn.disabled  = false;
     }
 }
 
+// ── Guardar nuevo cliente ─────────────────────────────────────
 async function guardarCliente() {
+    if (!validarFormularioNuevo()) return;
+
     const btnGuardar = document.getElementById('btnGuardarCliente');
     btnGuardar.disabled = true;
     btnGuardar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Guardando...';
 
     const datos = {
-        dni:       document.getElementById('dniInput').value,
-        nombres:   document.getElementById('nombresInput').value,
-        apellidos: document.getElementById('apellidosInput').value,
-        telefono:  document.querySelector('[name="telefono"]').value,
-        correo:    document.querySelector('[name="correo"]').value
+        dni:       document.getElementById('dniInput').value.trim(),
+        nombres:   document.getElementById('nombresInput').value.trim(),
+        apellidos: document.getElementById('apellidosInput').value.trim(),
+        telefono:  document.getElementById('telefonoInput').value.trim(),
+        correo:    document.getElementById('correoInput').value.trim()
     };
 
     try {
@@ -63,8 +267,10 @@ async function guardarCliente() {
         const data = await res.json();
 
         if (res.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('modalNuevo')).hide();
-            location.reload(); // refresca la tabla
+            const modalEl       = document.getElementById('modalNuevo');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modalInstance.hide();
+            location.reload();
         } else {
             alert('Error: ' + (data.error || 'No se pudo guardar el cliente.'));
         }
@@ -74,4 +280,29 @@ async function guardarCliente() {
         btnGuardar.disabled = false;
         btnGuardar.innerHTML = 'Registrar Cliente';
     }
+}
+
+// ── Preparar modal editar ─────────────────────────────────────
+function prepararEdicionCliente(btn) {
+    const id        = btn.getAttribute('data-id');
+    const dni       = btn.getAttribute('data-dni');
+    const nombres   = btn.getAttribute('data-nombres');
+    const apellidos = btn.getAttribute('data-apellidos');
+    const telefono  = btn.getAttribute('data-telefono');
+    const correo    = btn.getAttribute('data-correo');
+
+    document.getElementById('edit-dni').value       = dni;
+    document.getElementById('edit-nombres').value   = nombres;
+    document.getElementById('edit-apellidos').value = apellidos;
+    document.getElementById('edit-telefono').value  = (telefono === '—' || !telefono) ? '' : telefono;
+    document.getElementById('edit-correo').value    = (correo === '—' || !correo) ? '' : correo;
+
+    // Limpiar campos de contraseña al abrir
+    document.getElementById('edit-nueva-password').value     = '';
+    document.getElementById('edit-confirmar-password').value = '';
+
+    document.getElementById('form-editar').action = `/admin/cliente/actualizar/${id}`;
+
+    limpiarErrores('form-editar');
+    new bootstrap.Modal(document.getElementById('modalEditar')).show();
 }

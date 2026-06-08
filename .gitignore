@@ -12,3 +12,5 @@
 # Sistema operativo y temporales
 .DS_Store
 Thumbs.db
+.env
+uploads/

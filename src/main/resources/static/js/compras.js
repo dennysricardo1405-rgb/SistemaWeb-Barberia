@@ -1,12 +1,6 @@
-/**
- * Controla la selección de los recuadros rectangulares (Escenarios)
- * y actualiza los inputs del formulario en caliente.
- */
 function seleccionarEscenario(valor) {
-    // 1. Asignamos el valor al input oculto que Spring Boot va a procesar
     document.getElementById("tipoCompra").value = valor;
 
-    // 2. Control visual de los botones rectangulares
     const btnPaquete = document.getElementById("btnEscenarioPaquete");
     const btnUnidad = document.getElementById("btnEscenarioUnidad");
 
@@ -18,13 +12,9 @@ function seleccionarEscenario(valor) {
         btnPaquete.classList.remove("active");
     }
 
-    // 3. Ejecutamos los cambios en las cajas de texto inferiores
     alternarCamposCompra(valor);
 }
 
-/**
- * Corrige el bug visual ocultando o mostrando los campos inferiores de forma estricta
- */
 function alternarCamposCompra(tipo) {
     const labelCantidad = document.getElementById("labelCantidad");
     const labelPrecioCompra = document.getElementById("labelPrecioCompra");
@@ -32,7 +22,6 @@ function alternarCamposCompra(tipo) {
     const inputUnidades = document.getElementById("unidadesPorPaquete");
     const titleEscenario = document.getElementById("titleEscenario");
 
-    // Por si acaso, si no viene valor, lo lee del input oculto
     if (!tipo) {
         tipo = document.getElementById("tipoCompra").value;
     }
@@ -41,7 +30,7 @@ function alternarCamposCompra(tipo) {
         titleEscenario.innerText = "Especificaciones de Lote (Por Caja / Paquete)";
         labelCantidad.innerText = "Cantidad Cajas/Paquetes";
         labelPrecioCompra.innerText = "Costo por Caja";
-        
+
         // Mostrar unidades por paquete
         grupoUnidades.style.setProperty("display", "block", "important");
         inputUnidades.setAttribute("required", "required");
@@ -49,26 +38,23 @@ function alternarCamposCompra(tipo) {
         titleEscenario.innerText = "Especificaciones Unitarias (Unidades Sueltas)";
         labelCantidad.innerText = "Total Unidades Compradas";
         labelPrecioCompra.innerText = "Costo por Unidad";
-        
+
         // Ocultar por completo unidades por paquete (Soluciona tu bug de la captura)
         grupoUnidades.style.setProperty("display", "none", "important");
         inputUnidades.removeAttribute("required");
-        inputUnidades.value = ""; 
+        inputUnidades.value = "";
     }
 }
 
-/**
- * Control de modales para el buscador avanzado de productos
- */
 function seleccionarProductoDelBuscador(elemento) {
     const id = elemento.getAttribute("data-id");
     const nombre = elemento.getAttribute("data-nombre");
-    const precioActual = elemento.getAttribute("data-precio"); 
+    const precioActual = elemento.getAttribute("data-precio");
 
     // Inyectamos los valores al formulario oculto y visual del modal principal
     document.getElementById("productoIdDestino").value = id;
     document.getElementById("productoNombreVisual").value = nombre;
-    
+
     const txtVenta = document.getElementById("precioVentaUnidad");
     const valorPrecio = parseFloat(precioActual);
 
@@ -87,7 +73,7 @@ function seleccionarProductoDelBuscador(elemento) {
     // Regresar de forma nativa al modal principal de compras
     const modalBuscar = bootstrap.Modal.getInstance(document.getElementById('modalBuscarProducto'));
     modalBuscar.hide();
-    
+
     const modalPrincipal = new bootstrap.Modal(document.getElementById('modalNuevaCompra'));
     modalPrincipal.show();
 }
@@ -109,23 +95,23 @@ function filtrarProductosCatalogo() {
 }
 
 // Inicialización limpia al arrancar la vista
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     // Forzamos el arranque en PAQUETE por defecto de forma limpia
     seleccionarEscenario("PAQUETE");
 });
 
 // Interceptamos el envío del formulario para validar los precios en caliente
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector("form[action*='compras/guardar']");
-    
+
     if (form) {
-        form.addEventListener("submit", function(event) {
+        form.addEventListener("submit", function (event) {
             let tieneErrores = false;
 
             // Jalamos los valores de los inputs
             const txtVenta = document.getElementById("precioVentaUnidad");
             const txtCompra = document.getElementById("precioCompraPaquete");
-            
+
             // Jalamos las etiquetas de error en rojo
             const errorVenta = document.getElementById("errorVenta");
             const errorCompra = document.getElementById("errorCompra");
@@ -157,3 +143,20 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 });
+
+function toggleProveedor(esDirecta) {
+    const wrapperProv = document.getElementById('wrapperProveedor');
+    const badgeDirecta = document.getElementById('badgeCompraDirecta');
+    const selectProveedor = document.getElementById('selectProveedor');
+
+    if (esDirecta) {
+        wrapperProv.style.display = 'none';
+        badgeDirecta.style.display = 'block';
+        selectProveedor.value = '';
+        selectProveedor.removeAttribute('required');
+    } else {
+        wrapperProv.style.display = 'block';
+        badgeDirecta.style.display = 'none';
+        selectProveedor.setAttribute('required', 'required');
+    }
+}
