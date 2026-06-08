@@ -15,12 +15,12 @@
                 <i class="fa-solid fa-scissors fa-lg"></i>
                 <h4 class="mb-0">Barberia "La Clasica"</h4>
             </div>
-            <small class="text-white-50 d-block text-center mt-1" th:text="${#strings.replace(
-                       #strings.replace(
-                           #authentication.principal.authorities[0].authority,
-                           'ROLE_', ''),
-                       '_', ' ')}">
-            </small>
+            <small class="text-white-50 d-block text-center mt-1"
+       th:text="${#authorization.expression('hasRole(''ADMINISTRADOR'')') ? 'PANEL ADMINISTRATIVO' :
+                 (#authorization.expression('hasRole(''SECRETARIO'')') ? 'PANEL DE RECEPCIÓN' :
+                 (#authorization.expression('hasRole(''BARBERO'')') ? 'PANEL DEL BARBERO' :
+                 'PANEL'))}">
+</small>
         </div>
 
         <nav class="mt-4">
