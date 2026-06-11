@@ -32,11 +32,9 @@ public class UsuarioService {
         if (totalActivos >= 5) {
             throw new IllegalStateException("Límite máximo de 5 usuarios alcanzado.");
         }
-
         if (usuario.getId() == null && usuarioRepository.existsByEmail(usuario.getEmail())) {
             throw new IllegalArgumentException("El email ya está registrado.");
         }
-
         String passCifrada = passwordEncoder.encode(usuario.getPassword());
         usuario.setPassword(passCifrada);
         usuario.setEstado(1);
@@ -47,9 +45,18 @@ public class UsuarioService {
         Usuario existente = usuarioRepository.findById(usuario.getId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // ← Proteger al Administrador: no se puede cambiar su perfil
+        boolean esAdministrador = existente.getPerfil() != null &&
+                existente.getPerfil().getNombrePerfil()
+                        .equalsIgnoreCase("Administrador");
+
         existente.setNombre(usuario.getNombre());
         existente.setEmail(usuario.getEmail());
-        existente.setPerfil(usuario.getPerfil());
+
+        // Solo actualizar el perfil si NO es administrador
+        if (!esAdministrador) {
+            existente.setPerfil(usuario.getPerfil());
+        }
 
         if (usuario.getPassword() != null && !usuario.getPassword().isBlank()) {
             existente.setPassword(passwordEncoder.encode(usuario.getPassword()));
@@ -63,9 +70,7 @@ public class UsuarioService {
     }
 
     public boolean desactivarUsuario(Long idAEliminar, Long idUsuarioLogueado) {
-        if (idAEliminar.equals(idUsuarioLogueado)) {
-            return false;
-        }
+        if (idAEliminar.equals(idUsuarioLogueado)) return false;
         Optional<Usuario> u = usuarioRepository.findById(idAEliminar);
         if (u.isPresent()) {
             Usuario usuario = u.get();

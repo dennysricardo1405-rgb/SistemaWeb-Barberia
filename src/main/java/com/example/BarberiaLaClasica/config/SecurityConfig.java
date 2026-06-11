@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/cliente/carrito/**", "/cliente/mis-pedidos").hasRole("CLIENTE")
                         .requestMatchers("/secretario/pedidos/**").hasAnyRole("SECRETARIO", "ADMINISTRADOR")
                         .requestMatchers("/api/carrito/**").permitAll()
+
                         .requestMatchers("/api/auth/check").permitAll()
                         // 7. 🚫 CANDADO GENERAL ADMIN: Todo lo demás (CRUD de productos, barberos,
                         // reportes) es estricto del ADMIN

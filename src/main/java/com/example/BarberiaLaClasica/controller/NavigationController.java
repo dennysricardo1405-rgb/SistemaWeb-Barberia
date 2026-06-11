@@ -76,24 +76,30 @@ public class NavigationController {
     }
 
     // ── Usuarios ─────────────────────────────────────────────
-    @GetMapping("/admin/usuarios")
-    public String gestionUsuarios(Model model, Authentication authentication,
-                                  @RequestParam(defaultValue = "0") int page,
-                                  @RequestParam(defaultValue = "5") int size) {
+   @GetMapping("/admin/usuarios")
+public String gestionUsuarios(Model model, Authentication authentication,
+                              @RequestParam(defaultValue = "0") int page,
+                              @RequestParam(defaultValue = "5") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
-        Page<Usuario> usuariosPage = usuarioService.listarTodosPaginado(pageable);
+    Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+    Page<Usuario> usuariosPage = usuarioService.listarTodosPaginado(pageable);
 
-        model.addAttribute("usuariosPage", usuariosPage);
-        model.addAttribute("usuarios", usuariosPage.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", usuariosPage.getTotalPages());
-        model.addAttribute("totalItems", usuariosPage.getTotalElements());
-        model.addAttribute("size", size);
-        model.addAttribute("perfiles", perfilService.listarTodo());
-        model.addAttribute("usuarioLogueado", authentication.getName());
-        return "usuarios-lista";
-    }
+    // ← Solo perfiles que NO sean Administrador para crear nuevos usuarios
+    List<Perfil> perfilesSinAdmin = perfilService.listarTodo().stream()
+            .filter(p -> !p.getNombrePerfil().equalsIgnoreCase("Administrador"))
+            .toList();
+
+    model.addAttribute("usuariosPage", usuariosPage);
+    model.addAttribute("usuarios", usuariosPage.getContent());
+    model.addAttribute("currentPage", page);
+    model.addAttribute("totalPages", usuariosPage.getTotalPages());
+    model.addAttribute("totalItems", usuariosPage.getTotalElements());
+    model.addAttribute("size", size);
+    model.addAttribute("perfiles", perfilService.listarTodo());        // ← para modal editar (todos)
+    model.addAttribute("perfilesSinAdmin", perfilesSinAdmin);          // ← para modal nuevo (sin admin)
+    model.addAttribute("usuarioLogueado", authentication.getName());
+    return "usuarios-lista";
+}
 
     @GetMapping("/admin/usuarios/estado/{id}")
     public String cambiarEstadoUsuario(@PathVariable("id") Long id) {
@@ -153,19 +159,25 @@ public class NavigationController {
     }
 
     // ── Método auxiliar para recargar modelo en caso de error ─
-    private String cargarModeloUsuarios(Model model, Authentication authentication) {
-        Pageable pageable = PageRequest.of(0, 5, Sort.by("id").ascending());
-        Page<Usuario> usuariosPage = usuarioService.listarTodosPaginado(pageable);
-        model.addAttribute("usuariosPage", usuariosPage);
-        model.addAttribute("usuarios", usuariosPage.getContent());
-        model.addAttribute("currentPage", 0);
-        model.addAttribute("totalPages", usuariosPage.getTotalPages());
-        model.addAttribute("totalItems", usuariosPage.getTotalElements());
-        model.addAttribute("size", 5);
-        model.addAttribute("perfiles", perfilService.listarTodo());
-        model.addAttribute("usuarioLogueado", authentication.getName());
-        return "usuarios-lista";
-    }
+   private String cargarModeloUsuarios(Model model, Authentication authentication) {
+    Pageable pageable = PageRequest.of(0, 5, Sort.by("id").ascending());
+    Page<Usuario> usuariosPage = usuarioService.listarTodosPaginado(pageable);
+
+    List<Perfil> perfilesSinAdmin = perfilService.listarTodo().stream()
+            .filter(p -> !p.getNombrePerfil().equalsIgnoreCase("Administrador"))
+            .toList();
+
+    model.addAttribute("usuariosPage", usuariosPage);
+    model.addAttribute("usuarios", usuariosPage.getContent());
+    model.addAttribute("currentPage", 0);
+    model.addAttribute("totalPages", usuariosPage.getTotalPages());
+    model.addAttribute("totalItems", usuariosPage.getTotalElements());
+    model.addAttribute("size", 5);
+    model.addAttribute("perfiles", perfilService.listarTodo());
+    model.addAttribute("perfilesSinAdmin", perfilesSinAdmin);
+    model.addAttribute("usuarioLogueado", authentication.getName());
+    return "usuarios-lista";
+}
 
     // ── Perfiles/Roles ───────────────────────────────────────
     @GetMapping("/admin/perfiles")
