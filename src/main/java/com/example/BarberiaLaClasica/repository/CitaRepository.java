@@ -1,5 +1,6 @@
 package com.example.BarberiaLaClasica.repository;
 
+import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.model.Cliente;
 import org.springframework.data.domain.Page;
@@ -17,82 +18,88 @@ import java.util.Optional;
 @Repository
 public interface CitaRepository extends JpaRepository<Cita, Long> {
 
-    // Historial de citas de un cliente ordenado por fecha descendente
-    List<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente);
+        // Historial de citas de un cliente ordenado por fecha descendente
+        List<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente);
 
-    // Verificar si un horario ya está ocupado para un barbero
-    @Query("""
-                SELECT COUNT(c) > 0 FROM Cita c
-                WHERE c.barbero.id = :barberoId
-                AND c.fecha = :fecha
-                AND c.estado NOT IN (0)
-                AND (
-                    (c.horaInicio <= :horaInicio AND c.horaFin > :horaInicio)
-                    OR (c.horaInicio < :horaFin AND c.horaFin >= :horaFin)
-                    OR (c.horaInicio >= :horaInicio AND c.horaFin <= :horaFin)
-                )
-            """)
-    boolean existeConflictoHorario(
-            @Param("barberoId") Long barberoId,
-            @Param("fecha") LocalDate fecha,
-            @Param("horaInicio") LocalTime horaInicio,
-            @Param("horaFin") LocalTime horaFin);
+        // Verificar si un horario ya está ocupado para un barbero
+        @Query("""
+                            SELECT COUNT(c) > 0 FROM Cita c
+                            WHERE c.barbero.id = :barberoId
+                            AND c.fecha = :fecha
+                            AND c.estado NOT IN (0)
+                            AND (
+                                (c.horaInicio <= :horaInicio AND c.horaFin > :horaInicio)
+                                OR (c.horaInicio < :horaFin AND c.horaFin >= :horaFin)
+                                OR (c.horaInicio >= :horaInicio AND c.horaFin <= :horaFin)
+                            )
+                        """)
+        boolean existeConflictoHorario(
+                        @Param("barberoId") Long barberoId,
+                        @Param("fecha") LocalDate fecha,
+                        @Param("horaInicio") LocalTime horaInicio,
+                        @Param("horaFin") LocalTime horaFin);
 
-    // Horas ya ocupadas para un barbero en una fecha
-    @Query("""
-                SELECT c.horaInicio, c.estado FROM Cita c
-                WHERE c.barbero.id = :barberoId
-                AND c.fecha = :fecha
-                AND c.estado NOT IN (0)
-            """)
-    List<Object[]> findHorasConEstadoPorBarberoYFecha(
-            @Param("barberoId") Long barberoId,
-            @Param("fecha") LocalDate fecha);
+        // Horas ya ocupadas para un barbero en una fecha
+        @Query("""
+                            SELECT c.horaInicio, c.estado FROM Cita c
+                            WHERE c.barbero.id = :barberoId
+                            AND c.fecha = :fecha
+                            AND c.estado NOT IN (0)
+                        """)
+        List<Object[]> findHorasConEstadoPorBarberoYFecha(
+                        @Param("barberoId") Long barberoId,
+                        @Param("fecha") LocalDate fecha);
 
-    // Para el secretario: citas pendientes de confirmar
-    List<Cita> findByEstadoOrderByFechaAscHoraInicioAsc(int estado);
+        // Para el secretario: citas pendientes de confirmar
+        List<Cita> findByEstadoOrderByFechaAscHoraInicioAsc(int estado);
 
-    // Para el secretario: todas las citas de hoy
-    List<Cita> findByFechaOrderByHoraInicioAsc(LocalDate fecha);
+        // Para el secretario: todas las citas de hoy
+        List<Cita> findByFechaOrderByHoraInicioAsc(LocalDate fecha);
 
-    @Query("""
-                SELECT c FROM Cita c
-                WHERE c.barbero.id = :barberoId
-                AND c.fecha = :fecha
-                AND c.estado = :estado
-                ORDER BY c.horaInicio ASC
-                LIMIT 1
-            """)
-    Optional<Cita> findProximaCitaPorBarberoFechaEstado(
-            @Param("barberoId") Long barberoId,
-            @Param("fecha") LocalDate fecha,
-            @Param("estado") int estado);
+        List<Cita> findByBarberoAndEstadoAndFechaBetweenOrderByFechaAsc(
+                        Barbero barbero,
+                        int estado,
+                        LocalDate inicio,
+                        LocalDate fin);
 
-    @Query("""
-                SELECT COUNT(c) FROM Cita c
-                WHERE c.cliente.id = :clienteId
-                AND c.estado IN (1, 2)
-            """)
-    long contarReservasActivasPorCliente(@Param("clienteId") Long clienteId);
+        @Query("""
+                            SELECT c FROM Cita c
+                            WHERE c.barbero.id = :barberoId
+                            AND c.fecha = :fecha
+                            AND c.estado = :estado
+                            ORDER BY c.horaInicio ASC
+                            LIMIT 1
+                        """)
+        Optional<Cita> findProximaCitaPorBarberoFechaEstado(
+                        @Param("barberoId") Long barberoId,
+                        @Param("fecha") LocalDate fecha,
+                        @Param("estado") int estado);
 
-    Page<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente, Pageable pageable);
+        @Query("""
+                            SELECT COUNT(c) FROM Cita c
+                            WHERE c.cliente.id = :clienteId
+                            AND c.estado IN (1, 2)
+                        """)
+        long contarReservasActivasPorCliente(@Param("clienteId") Long clienteId);
 
-    // Verificar si cliente tiene cita activa distinta a una específica
-    @Query("""
-                SELECT COUNT(c) > 0 FROM Cita c
-                WHERE c.cliente.id = :clienteId
-                AND c.estado IN (1, 2)
-                AND c.id <> :excludeId
-            """)
-    boolean tieneOtraReservaActiva(
-            @Param("clienteId") Long clienteId,
-            @Param("excludeId") Long excludeId);
+        Page<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente, Pageable pageable);
 
-    // ==================== MÉTODO CORREGIDO ====================
-    // Reservas confirmadas de hoy con paginación
-    Page<Cita> findByFechaAndEstadoOrderByHoraInicioAsc(
-            LocalDate fecha, 
-            int estado, 
-            Pageable pageable);
+        // Verificar si cliente tiene cita activa distinta a una específica
+        @Query("""
+                            SELECT COUNT(c) > 0 FROM Cita c
+                            WHERE c.cliente.id = :clienteId
+                            AND c.estado IN (1, 2)
+                            AND c.id <> :excludeId
+                        """)
+        boolean tieneOtraReservaActiva(
+                        @Param("clienteId") Long clienteId,
+                        @Param("excludeId") Long excludeId);
+
+        // ==================== MÉTODO CORREGIDO ====================
+        // Reservas confirmadas de hoy con paginación
+        Page<Cita> findByFechaAndEstadoOrderByHoraInicioAsc(
+                        LocalDate fecha,
+                        int estado,
+                        Pageable pageable);
 
 }

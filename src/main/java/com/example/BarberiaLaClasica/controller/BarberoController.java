@@ -1,7 +1,16 @@
 package com.example.BarberiaLaClasica.controller;
 
 import com.example.BarberiaLaClasica.model.Barbero;
+import com.example.BarberiaLaClasica.model.Cita;
+import com.example.BarberiaLaClasica.repository.CitaRepository;
 import com.example.BarberiaLaClasica.service.BarberoService;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.LinkedHashMap;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +21,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/barberos")
@@ -19,8 +30,9 @@ public class BarberoController {
 
     @Autowired
     private BarberoService barberoService;
-
-    private static final String[] DIAS = {"MARTES", "MIERCOLES"};
+    @Autowired
+    private CitaRepository citaRepository;
+    private static final String[] DIAS = { "MARTES", "MIERCOLES" };
 
     // ── Lista con Paginación ─────────────────────────────────────
     @GetMapping
@@ -170,5 +182,73 @@ public class BarberoController {
             redirect.addFlashAttribute("error", "Error al cambiar estado");
         }
         return "redirect:/admin/barberos";
+    }
+
+    @GetMapping("/sueldos")
+    public String vistasSueldos(
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) Integer anio,
+            Model model) {
+
+        // Si no se pasa mes/año usa el mes actual
+        YearMonth periodo = (mes != null && anio != null)
+                ? YearMonth.of(anio, mes)
+                : YearMonth.now();
+
+        LocalDate inicio = periodo.atDay(1);
+        LocalDate fin = periodo.atEndOfMonth();
+
+        // Citas COMPLETADAS del periodo para cada barbero
+        List<Barbero> barberos = barberoService.listarTodos();
+
+        // Mapa: barbero → resumen de comisiones
+        Map<Barbero, Map<String, Object>> resumen = new LinkedHashMap<>();
+
+        for (Barbero b : barberos) {
+            List<Cita> citas = citaRepository
+                    .findByBarberoAndEstadoAndFechaBetweenOrderByFechaAsc(b, 3, inicio, fin);
+
+            BigDecimal totalGenerado = citas.stream()
+                    .map(Cita::getTotalPrecio)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal comision = totalGenerado
+                    .multiply(BigDecimal.valueOf(0.50))
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            Map<String, Object> datos = new LinkedHashMap<>();
+            datos.put("citas", citas);
+            datos.put("totalCitas", citas.size());
+            datos.put("totalGenerado", totalGenerado);
+            datos.put("comision", comision);
+
+            resumen.put(b, datos);
+        }
+
+        // Lista de meses disponibles para el selector (últimos 12)
+        List<YearMonth> mesesDisponibles = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            mesesDisponibles.add(YearMonth.now().minusMonths(i));
+        }
+
+        model.addAttribute("resumen", resumen);
+        model.addAttribute("periodo", periodo);
+        model.addAttribute("mesesDisponibles", mesesDisponibles);
+        BigDecimal totalGeneralPeriodo = resumen.values().stream()
+                .map(d -> (BigDecimal) d.get("totalGenerado"))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalComisionesPeriodo = resumen.values().stream()
+                .map(d -> (BigDecimal) d.get("comision"))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int totalCitasPeriodo = resumen.values().stream()
+                .mapToInt(d -> (int) d.get("totalCitas"))
+                .sum();
+
+        model.addAttribute("totalGeneralPeriodo", totalGeneralPeriodo);
+        model.addAttribute("totalComisionesPeriodo", totalComisionesPeriodo);
+        model.addAttribute("totalCitasPeriodo", totalCitasPeriodo);
+        return "barberos/sueldos";
     }
 }
