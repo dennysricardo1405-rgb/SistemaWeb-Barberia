@@ -127,7 +127,6 @@ public class CitaService {
         citaRepository.save(cita);
     }
 
-    // ── Enviar mensaje WhatsApp con Twilio ────────────────────────────────────
     private void enviarEmail(Cita cita) {
         try {
             DateTimeFormatter fmtFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -178,8 +177,11 @@ public class CitaService {
             System.out.println("✅ Email enviado a: " + cita.getCliente().getCorreo());
 
         } catch (Exception e) {
-            System.err.println("ERROR enviando email: " + e.getMessage());
-        }
+    System.err.println("ERROR CORREO COMPLETO: " + e.getClass().getName() 
+                       + " — " + e.getMessage());
+    if (e.getCause() != null) 
+        System.err.println("CAUSA: " + e.getCause().getMessage());
+}
     }
 
     // Historial paginado
