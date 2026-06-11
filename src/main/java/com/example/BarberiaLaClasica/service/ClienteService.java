@@ -22,7 +22,6 @@ public class ClienteService {
         return clienteRepository.findAll();
     }
 
-    // MODIFICADO: Recibe la variable search y decide qué consulta realizar
     public Page<Cliente> listarTodosPaginado(Pageable pageable, String search) {
         if (search != null && !search.trim().isEmpty()) {
             String query = search.trim();
@@ -48,25 +47,30 @@ public class ClienteService {
         if (c.getCorreo() != null && clienteRepository.existsByCorreo(c.getCorreo())) {
             throw new RuntimeException("Ya existe una cuenta con ese correo.");
         }
-        
-        c.setPassword(passwordEncoder.encode((CharSequence) passwordPlana));
+        c.setPassword(passwordEncoder.encode(passwordPlana));
         c.setEstado(1);
         return clienteRepository.save(c);
     }
 
-    public Cliente actualizarDesdeAdmin(Long id, Cliente datosActualizados) {
+    public Cliente actualizarDesdeAdmin(Long id, Cliente datosActualizados, String nuevaPassword) {
         Cliente clienteExistente = buscarPorId(id);
 
-        if (datosActualizados.getCorreo() != null && !datosActualizados.getCorreo().equalsIgnoreCase(clienteExistente.getCorreo())) {
+        // Validar correo único si cambió
+        if (datosActualizados.getCorreo() != null
+                && !datosActualizados.getCorreo().equalsIgnoreCase(clienteExistente.getCorreo())) {
             if (clienteRepository.existsByCorreo(datosActualizados.getCorreo())) {
                 throw new RuntimeException("El correo ya está registrado por otro cliente.");
             }
         }
 
-        clienteExistente.setNombres(datosActualizados.getNombres());
-        clienteExistente.setApellidos(datosActualizados.getApellidos());
+        // Mantener nombres y apellidos originales (no se editan desde admin)
         clienteExistente.setTelefono(datosActualizados.getTelefono());
         clienteExistente.setCorreo(datosActualizados.getCorreo());
+
+        // ← Cambiar contraseña solo si se envió una nueva
+        if (nuevaPassword != null && !nuevaPassword.trim().isEmpty()) {
+            clienteExistente.setPassword(passwordEncoder.encode(nuevaPassword.trim()));
+        }
 
         return clienteRepository.save(clienteExistente);
     }
