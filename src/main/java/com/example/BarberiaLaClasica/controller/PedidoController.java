@@ -20,7 +20,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.example.BarberiaLaClasica.model.Producto;
-import com.example.BarberiaLaClasica.repository.ClienteRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.service.PedidoService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -301,5 +300,11 @@ public class PedidoController {
         List<Map<String, Object>> nuevo = new ArrayList<>();
         session.setAttribute("carrito", nuevo);
         return nuevo;
+    }
+
+    @GetMapping("/api/auth/check")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> checkAuth(Principal principal) {
+        return ResponseEntity.ok(Map.of("logueado", principal != null));
     }
 }

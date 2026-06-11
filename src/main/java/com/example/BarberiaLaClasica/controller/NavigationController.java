@@ -57,6 +57,8 @@ public class NavigationController {
         model.addAttribute("sliderImagenes", sliderImageService.listarActivas());
         model.addAttribute("promociones", promocionService.listarActivas());
         model.addAttribute("config", configuracionSitioService.obtenerMapa());
+        model.addAttribute("serviciosDestacados", 
+    servicioRepository.findByEstado(1)); // los activos
         return "index";
     }
 
