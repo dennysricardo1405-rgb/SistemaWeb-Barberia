@@ -1,6 +1,7 @@
 package com.example.BarberiaLaClasica.service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +64,7 @@ public class RecepcionService {
 
     public NotaVenta obtenerNota(Long id) {
         return notaVentaRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Nota no encontrada"));
+                .orElseThrow(() -> new RuntimeException("Nota no encontrada"));
     }
 
     // ── Listar todas las notas (mantener compatibilidad) ─────────────────────
@@ -108,8 +109,17 @@ public class RecepcionService {
     // ── Abrir sesión WALK-IN ─────────────────────────────────────────────────
     @Transactional
     public void ocuparSillaWalkin(Long barberoId, Long clienteId, Long servicioId) {
-        if (getCitaReservaHoy(barberoId).isPresent())
-            throw new RuntimeException("Este barbero tiene una reserva confirmada para hoy.");
+        // Solo bloquear si la reserva es en los próximos 30 minutos
+        getCitaReservaHoy(barberoId).ifPresent(cita -> {
+            LocalTime ahora = LocalTime.now();
+            LocalTime horaRes = cita.getHoraInicio();
+            long minutos = java.time.Duration.between(ahora, horaRes).toMinutes();
+            if (minutos >= 0 && minutos <= 30) {
+                throw new RuntimeException(
+                        "Hay una reserva en " + minutos + " min. " +
+                                "Usa 'Atender Reserva' o espera a que pase.");
+            }
+        });
 
         Barbero barbero = barberoRepository.findById(barberoId)
                 .orElseThrow(() -> new RuntimeException("Barbero no encontrado"));
@@ -235,11 +245,11 @@ public class RecepcionService {
     @Transactional
     public void asociarCliente(Long barberoId, Long clienteId) {
         SillaSession session = sessionRepository
-            .findByBarberoIdAndEstado(barberoId, 1)
-            .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
+                .findByBarberoIdAndEstado(barberoId, 1)
+                .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
 
         clienteRepository.findById(clienteId)
-            .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
         sessionRepository.actualizarCliente(session.getId(), clienteId);
     }

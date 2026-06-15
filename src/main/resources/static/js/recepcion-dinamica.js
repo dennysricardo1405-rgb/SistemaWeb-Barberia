@@ -1,17 +1,141 @@
-// ============================================================
-// recepcion-dinamica.js
-// ============================================================
-
-let modalOcupar    = null;
+let modalOcupar = null;
 let modalGestionar = null;
 
 const HEADERS_JSON = { 'Content-Type': 'application/json' };
 
+// ── CSRF ──────────────────────────────────────────────────────
+function getCsrf() {
+    return document.querySelector('meta[name="_csrf"]')?.content
+        || document.querySelector('input[name="_csrf"]')?.value
+        || '';
+}
+
+// ── TOAST FLOTANTE ────────────────────────────────────────────
+function mostrarToast(tipo, titulo, mensaje) {
+    const colores = {
+        exito: { bg: '#0f2e1a', border: '#2ecc71', color: '#2ecc71', icon: 'circle-check' },
+        error: { bg: '#2e0f0f', border: '#e74c3c', color: '#e74c3c', icon: 'circle-xmark' },
+        warning: { bg: '#2e2200', border: '#f39c12', color: '#f39c12', icon: 'triangle-exclamation' },
+        info: { bg: '#0f1e2e', border: '#3498db', color: '#3498db', icon: 'circle-info' }
+    };
+    const c = colores[tipo] || colores.info;
+
+    let contenedor = document.getElementById('toastContenedor');
+    if (!contenedor) {
+        contenedor = document.createElement('div');
+        contenedor.id = 'toastContenedor';
+        contenedor.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;min-width:300px;max-width:380px;';
+        document.body.appendChild(contenedor);
+    }
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background:${c.bg}; border:1px solid ${c.border}; color:${c.text || '#fff'};
+        border-radius:12px; padding:14px 18px;
+        display:flex; align-items:flex-start; gap:12px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.4);
+        animation: slideIn 0.3s ease;
+    `;
+    toast.innerHTML = `
+        <i class="fa-solid fa-${c.icon} fa-lg mt-1" style="color:${c.color}; flex-shrink:0;"></i>
+        <div style="flex:1;">
+            <div style="font-weight:700; color:${c.color}; font-size:0.9rem;">${titulo}</div>
+            ${mensaje ? `<div style="color:rgba(255,255,255,0.7); font-size:0.82rem; margin-top:3px;">${mensaje}</div>` : ''}
+        </div>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:1rem;line-height:1;padding:0;">✕</button>
+    `;
+
+    contenedor.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 4500);
+}
+
+// Inyectar animación CSS una sola vez
+if (!document.getElementById('toastAnim')) {
+    const style = document.createElement('style');
+    style.id = 'toastAnim';
+    style.textContent = `@keyframes slideIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }`;
+    document.head.appendChild(style);
+}
+
+// ── CONFIRMAR BONITO (reemplaza confirm()) ─────────────────────
+function confirmarAccion(mensaje, onAceptar) {
+    let modal = document.getElementById('modalConfirmacion');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalConfirmacion';
+        modal.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;">
+            <div style="background:#111;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:28px 32px;max-width:380px;width:90%;text-align:center;">
+                <i class="fa-solid fa-circle-question fa-2x mb-3" style="color:#c9a84c;"></i>
+                <p id="textoConfirmacion" style="color:#f0ece0;font-size:0.95rem;margin-bottom:24px;"></p>
+                <div style="display:flex;gap:12px;justify-content:center;">
+                    <button id="btnCancelarConfirm" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#aaa;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button>
+                    <button id="btnAceptarConfirm" style="background:linear-gradient(135deg,#c9a84c,#9a7a30);color:#0a0a0a;padding:10px 24px;border-radius:8px;cursor:pointer;font-weight:700;border:none;">Confirmar</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+
+    document.getElementById('textoConfirmacion').textContent = mensaje;
+    modal.style.display = 'flex';
+
+    document.getElementById('btnCancelarConfirm').onclick = () => { modal.style.display = 'none'; };
+    document.getElementById('btnAceptarConfirm').onclick = () => { modal.style.display = 'none'; onAceptar(); };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    const elOcupar    = document.getElementById('modalOcuparSilla');
+    const elOcupar = document.getElementById('modalOcuparSilla');
     const elGestionar = document.getElementById('modalGestionarSilla');
-    if (elOcupar)    modalOcupar    = new bootstrap.Modal(elOcupar);
+    if (elOcupar) modalOcupar = new bootstrap.Modal(elOcupar);
     if (elGestionar) modalGestionar = new bootstrap.Modal(elGestionar);
+
+    document.addEventListener('click', e => {
+        // Walk-in normal (sin reserva)
+        const btnOcupar = e.target.closest('.btn-ocupar');
+        if (btnOcupar) {
+            abrirModalOcupar(btnOcupar.dataset.id, btnOcupar.dataset.nombre);
+            return;
+        }
+
+        // Walk-in con reserva
+        const btnConReserva = e.target.closest('.btn-ocupar-con-reserva');
+        if (btnConReserva) {
+            const barberoId = btnConReserva.dataset.id;
+            const barberoNombre = btnConReserva.dataset.nombre;
+            const horaReserva = btnConReserva.dataset.horaReserva;
+
+            fetch(`/secretario/recepcion/api-estado-barbero/${barberoId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.bloqueado) {
+                        mostrarToast('warning',
+                            'Reserva próxima',
+                            `${data.cliente} tiene cita a las ${horaReserva} ` +
+                            `(en ${data.minutosRestantes} min). ` +
+                            `Usa "Atender Reserva".`);
+                    } else {
+                        const mins = data.minutosRestantes;
+                        const aviso = mins > 0
+                            ? `⚠ Hay reserva a las ${horaReserva} (en ${mins} min).`
+                            : '';
+                        confirmarAccion(
+                            `Iniciar Reserva con ${barberoNombre}. ${aviso} ¿Continuar?`,
+                            () => abrirModalOcupar(barberoId, barberoNombre)
+                        );
+                    }
+                })
+                .catch(() => abrirModalOcupar(barberoId, barberoNombre));
+            return;
+        }
+
+        // Gestionar cuenta
+        const btnGestionar = e.target.closest('.btn-gestionar');
+        if (btnGestionar) {
+            abrirModalGestionar(btnGestionar.dataset.id, btnGestionar.dataset.nombre);
+            return;
+        }
+    });
 });
 
 // ── ABRIR MODAL OCUPAR ────────────────────────────────────────
@@ -35,32 +159,27 @@ function abrirModalGestionar(id, nombre) {
 // ── CARGAR CONSUMOS ───────────────────────────────────────────
 function cargarConsumosDeSilla(barberoId) {
     fetch(`/secretario/recepcion/api-consumos/${barberoId}`)
-    .then(r => r.json())
-    .then(data => {
+        .then(r => r.json())
+        .then(data => {
+            const labelServicio = document.getElementById('labelServicioActual');
+            if (labelServicio) {
+                labelServicio.textContent = data.servicio
+                    ? data.servicio.nombre + '  ·  S/ ' + Number(data.servicio.precio).toFixed(2)
+                    : '—';
+            }
 
-        // ── Servicio en el label izquierdo ──
-        const labelServicio = document.getElementById('labelServicioActual');
-        if (labelServicio) {
-            labelServicio.textContent = data.servicio
-                ? data.servicio.nombre + '  ·  S/ ' + Number(data.servicio.precio).toFixed(2)
-                : '—';
-        }
+            if (data.cliente) {
+                document.getElementById('clienteGestionNombre').textContent =
+                    data.cliente.nombres + ' ' + data.cliente.apellidos + ' — ' + data.cliente.dni;
+                document.getElementById('clienteGestionInfo').style.display = 'block';
+            }
 
-        // ── Cliente ya asociado ──
-        if (data.cliente) {
-            document.getElementById('clienteGestionNombre').textContent =
-                data.cliente.nombres + ' ' + data.cliente.apellidos + ' — ' + data.cliente.dni;
-            document.getElementById('clienteGestionInfo').style.display = 'block';
-        }
+            const tbody = document.getElementById('tablaDetalleConsumos');
+            tbody.innerHTML = '';
 
-        // ── Tabla: primero servicio base, luego productos ──
-        const tbody = document.getElementById('tablaDetalleConsumos');
-        tbody.innerHTML = '';
-
-        // ✅ Fila 1: Servicio base (sin botón eliminar)
-        if (data.servicio) {
-            const precio = Number(data.servicio.precio);
-            tbody.innerHTML += `
+            if (data.servicio) {
+                const precio = Number(data.servicio.precio);
+                tbody.innerHTML += `
                 <tr style="border-left:3px solid #c9a84c;">
                     <td>
                         <i class="fa-solid fa-scissors me-1 text-warning small"></i>
@@ -74,24 +193,20 @@ function cargarConsumosDeSilla(barberoId) {
                         <i class="fa-solid fa-lock text-muted small" title="No removible"></i>
                     </td>
                 </tr>`;
-        }
+            }
 
-        // ✅ Filas siguientes: productos agregados
-        if (!data.consumos || data.consumos.length === 0) {
-            tbody.innerHTML += `
+            if (!data.consumos || data.consumos.length === 0) {
+                tbody.innerHTML += `
                 <tr>
                     <td colspan="5" class="text-center text-muted py-2 small">
                         <i class="fa-solid fa-box-open me-1"></i>Sin productos agregados aún
                     </td>
                 </tr>`;
-        } else {
-            data.consumos.forEach(c => {
-                tbody.innerHTML += `
+            } else {
+                data.consumos.forEach(c => {
+                    tbody.innerHTML += `
                 <tr>
-                    <td>
-                        <i class="fa-solid fa-box me-1 text-muted small"></i>
-                        ${c.descripcion}
-                    </td>
+                    <td><i class="fa-solid fa-box me-1 text-muted small"></i>${c.descripcion}</td>
                     <td class="text-center">${c.cantidad}</td>
                     <td class="text-end">S/ ${Number(c.precioUnit).toFixed(2)}</td>
                     <td class="text-end text-success fw-bold">S/ ${Number(c.subtotal).toFixed(2)}</td>
@@ -102,48 +217,55 @@ function cargarConsumosDeSilla(barberoId) {
                         </button>
                     </td>
                 </tr>`;
-            });
-        }
+                });
+            }
 
-        // ── Total = servicio + productos ──
-        const totalConsumos  = data.total || 0;
-        const precioServicio = data.servicio ? Number(data.servicio.precio) : 0;
-        document.getElementById('textoTotalSilla').textContent =
-            'S/ ' + (totalConsumos + precioServicio).toFixed(2);
-    })
-    .catch(err => console.error('Error cargando consumos:', err));
+            const totalConsumos = data.total || 0;
+            const precioServicio = data.servicio ? Number(data.servicio.precio) : 0;
+            document.getElementById('textoTotalSilla').textContent =
+                'S/ ' + (totalConsumos + precioServicio).toFixed(2);
+        })
+        .catch(err => console.error('Error cargando consumos:', err));
 }
 
 // ── AGREGAR PRODUCTO ──────────────────────────────────────────
 function agregarProductoDirecto(productoId) {
     const barberoId = document.getElementById('consumoBarberoId').value;
     const cantInput = document.getElementById(`cant-${productoId}`);
-    const cantidad  = parseInt(cantInput?.value) || 1;
+    const cantidad = parseInt(cantInput?.value) || 1;
 
     fetch(`/secretario/recepcion/api-consumos/agregar?barberoId=${barberoId}&productoId=${productoId}&cantidad=${cantidad}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': getCsrf() }
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.error) { alert('Error: ' + data.error); return; }
-        if (cantInput) cantInput.value = 1;
-        cargarConsumosDeSilla(barberoId);
-    })
-    .catch(err => alert('Error al agregar producto: ' + err.message));
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                // ✅ Toast en vez de alert feo
+                mostrarToast('error', 'Stock insuficiente', data.error);
+                return;
+            }
+            if (cantInput) cantInput.value = 1;
+            cargarConsumosDeSilla(barberoId);
+            mostrarToast('exito', 'Producto agregado', '');
+        })
+        .catch(err => mostrarToast('error', 'Error', err.message));
 }
 
 // ── QUITAR CONSUMO ────────────────────────────────────────────
 function quitarConsumoDeSilla(consumoId, barberoId) {
-    if (!confirm('¿Remover este producto de la cuenta?')) return;
-    fetch(`/secretario/recepcion/api-consumos/eliminar/${consumoId}`, {
-        method: 'DELETE',
-        headers: HEADERS_JSON
-    })
-    .then(r => {
-        if (!r.ok) throw new Error('No se pudo eliminar.');
-        cargarConsumosDeSilla(barberoId);
-    })
-    .catch(err => alert(err.message));
+    confirmarAccion('¿Remover este producto de la cuenta?', () => {
+        fetch(`/secretario/recepcion/api-consumos/eliminar/${consumoId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': getCsrf() }
+        })
+            .then(r => {
+                if (!r.ok) throw new Error('No se pudo eliminar.');
+                cargarConsumosDeSilla(barberoId);
+                mostrarToast('info', 'Producto removido', '');
+            })
+            .catch(err => mostrarToast('error', 'Error', err.message));
+    });
 }
 
 // ── FILTRAR PRODUCTOS ─────────────────────────────────────────
@@ -157,8 +279,8 @@ function filtrarProductos(texto) {
 // ── TABS GESTIONAR ────────────────────────────────────────────
 function switchGestionTab(tab) {
     document.getElementById('gTabExistente').style.display = tab === 'existente' ? 'block' : 'none';
-    document.getElementById('gTabNuevo').style.display     = tab === 'nuevo'     ? 'block' : 'none';
-    document.getElementById('gTabLibre').style.display     = tab === 'libre'     ? 'block' : 'none';
+    document.getElementById('gTabNuevo').style.display = tab === 'nuevo' ? 'block' : 'none';
+    document.getElementById('gTabLibre').style.display = tab === 'libre' ? 'block' : 'none';
 
     const btns = { existente: 'gBtnExistente', nuevo: 'gBtnNuevo', libre: 'gBtnLibre' };
     Object.entries(btns).forEach(([key, id]) => {
@@ -181,19 +303,19 @@ function buscarClienteGestion(valor) {
     clearTimeout(timeoutGestion);
     timeoutGestion = setTimeout(() => {
         fetch(`/api/clientes/buscar-dni?q=${encodeURIComponent(valor)}`)
-        .then(r => r.json())
-        .then(clientes => {
-            resultado.style.display = 'block';
-            if (!clientes || clientes.length === 0) {
-                resultado.innerHTML = `<span class="text-muted small p-2 d-block">No encontrado.</span>`;
-                return;
-            }
-            resultado.innerHTML = '';
-            clientes.forEach(cli => {
-                const div = document.createElement('div');
-                div.className = 'p-2 rounded-2 mb-1 d-flex justify-content-between align-items-center';
-                div.style.cssText = 'background:#252525; cursor:pointer;';
-                div.innerHTML = `
+            .then(r => r.json())
+            .then(clientes => {
+                resultado.style.display = 'block';
+                if (!clientes || clientes.length === 0) {
+                    resultado.innerHTML = `<span class="text-muted small p-2 d-block">No encontrado.</span>`;
+                    return;
+                }
+                resultado.innerHTML = '';
+                clientes.forEach(cli => {
+                    const div = document.createElement('div');
+                    div.className = 'p-2 rounded-2 mb-1 d-flex justify-content-between align-items-center';
+                    div.style.cssText = 'background:#252525; cursor:pointer;';
+                    div.innerHTML = `
                     <div>
                         <span class="fw-bold text-white small">${cli.nombres} ${cli.apellidos}</span>
                         <span class="text-muted font-monospace ms-2 small">${cli.dni}</span>
@@ -201,46 +323,38 @@ function buscarClienteGestion(valor) {
                     <button type="button" class="btn btn-sm btn-success py-0 px-2 rounded-pill small fw-bold">
                         Seleccionar
                     </button>`;
-                div.querySelector('button').onclick = () =>
-                    asociarClienteGestion(cli.id, `${cli.nombres} ${cli.apellidos}`, cli.dni);
-                resultado.appendChild(div);
+                    div.querySelector('button').onclick = () =>
+                        asociarClienteGestion(cli.id, `${cli.nombres} ${cli.apellidos}`, cli.dni);
+                    resultado.appendChild(div);
+                });
+            })
+            .catch(() => {
+                resultado.style.display = 'block';
+                resultado.innerHTML = `<span class="text-danger small p-2 d-block">Error al buscar.</span>`;
             });
-        })
-        .catch(() => {
-            resultado.style.display = 'block';
-            resultado.innerHTML = `<span class="text-danger small p-2 d-block">Error al buscar.</span>`;
-        });
     }, 350);
 }
 
 // ── ASOCIAR CLIENTE A SESIÓN ──────────────────────────────────
 async function asociarClienteGestion(clienteId, nombre, dni) {
     const barberoId = document.getElementById('consumoBarberoId').value;
-    
-    // Obtener token CSRF
-    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content 
-                   || document.querySelector('input[name="_csrf"]')?.value 
-                   || '';
-
     try {
         const res = await fetch(
             `/secretario/recepcion/asociar-cliente?barberoId=${barberoId}&clienteId=${clienteId}`,
-            { 
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrfToken }  // ← agregar esto
-            }
+            { method: 'POST', headers: { 'X-CSRF-TOKEN': getCsrf() } }
         );
         if (!res.ok) {
             const err = await res.json();
-            alert('Error: ' + (err.error || 'No se pudo asociar.'));
+            mostrarToast('error', 'Error', err.error || 'No se pudo asociar.');
             return;
         }
         document.getElementById('clienteGestionNombre').textContent = nombre + ' — ' + dni;
         document.getElementById('clienteGestionInfo').style.display = 'block';
         document.getElementById('resultadoBusquedaGestion').style.display = 'none';
         document.getElementById('buscarDniGestion').value = '';
+        mostrarToast('exito', 'Cliente asociado', nombre);
     } catch {
-        alert('Error de conexión al asociar cliente.');
+        mostrarToast('error', 'Error de conexión', '');
     }
 }
 
@@ -256,33 +370,33 @@ function limpiarClienteGestion() {
     if (resultado) resultado.style.display = 'none';
 }
 
-// ── BUSCAR DNI API PARA NUEVO CLIENTE EN GESTIONAR ───────────
+// ── BUSCAR DNI NUEVO CLIENTE ──────────────────────────────────
 async function buscarDniGestionNuevo() {
     const dni = document.getElementById('gNuevoDni').value.trim();
     if (dni.length !== 8) return;
     try {
-        const res  = await fetch(`/api/clientes/consulta-dni/${dni}`);
+        const res = await fetch(`/api/clientes/consulta-dni/${dni}`);
         const data = await res.json();
-        document.getElementById('gNuevoNombres').value   = data.nombres   || '';
+        document.getElementById('gNuevoNombres').value = data.nombres || '';
         document.getElementById('gNuevoApellidos').value = data.apellidos || '';
     } catch { }
 }
 
 // ── REGISTRAR NUEVO CLIENTE Y ASOCIAR ────────────────────────
 async function registrarYAsociarCliente() {
-    const dni       = document.getElementById('gNuevoDni').value.trim();
-    const nombres   = document.getElementById('gNuevoNombres').value.trim();
+    const dni = document.getElementById('gNuevoDni').value.trim();
+    const nombres = document.getElementById('gNuevoNombres').value.trim();
     const apellidos = document.getElementById('gNuevoApellidos').value.trim();
-    const telefono  = document.getElementById('gNuevoTelefono').value.trim();
-    const correo    = document.getElementById('gNuevoCorreo').value.trim();
-    const msg       = document.getElementById('gNuevoClienteMsg');
+    const telefono = document.getElementById('gNuevoTelefono').value.trim();
+    const correo = document.getElementById('gNuevoCorreo').value.trim();
+    const msg = document.getElementById('gNuevoClienteMsg');
 
     if (!dni || dni.length !== 8) { mostrarMsg(msg, 'error', 'DNI debe tener 8 dígitos.'); return; }
-    if (!nombres || !apellidos)   { mostrarMsg(msg, 'error', 'Nombres y apellidos obligatorios.'); return; }
-    if (!correo)                  { mostrarMsg(msg, 'error', 'Correo obligatorio para que el cliente pueda iniciar sesión.'); return; }
+    if (!nombres || !apellidos) { mostrarMsg(msg, 'error', 'Nombres y apellidos obligatorios.'); return; }
+    if (!correo) { mostrarMsg(msg, 'error', 'Correo obligatorio.'); return; }
 
     try {
-        const res  = await fetch('/api/clientes/guardar-rapido', {
+        const res = await fetch('/api/clientes/guardar-rapido', {
             method: 'POST',
             headers: HEADERS_JSON,
             body: JSON.stringify({ dni, nombres, apellidos, telefono, correo })
@@ -292,8 +406,7 @@ async function registrarYAsociarCliente() {
 
         mostrarMsg(msg, 'exito', `Cliente ${data.nombres} guardado.`);
         await asociarClienteGestion(data.id, `${data.nombres} ${data.apellidos}`, data.dni);
-
-        ['gNuevoDni','gNuevoNombres','gNuevoApellidos','gNuevoTelefono','gNuevoCorreo']
+        ['gNuevoDni', 'gNuevoNombres', 'gNuevoApellidos', 'gNuevoTelefono', 'gNuevoCorreo']
             .forEach(id => document.getElementById(id).value = '');
         switchGestionTab('existente');
     } catch {
@@ -301,41 +414,51 @@ async function registrarYAsociarCliente() {
     }
 }
 
-// ── HELPER MENSAJES ───────────────────────────────────────────
+// ── HELPER MENSAJES INLINE ────────────────────────────────────
 function mostrarMsg(el, tipo, texto) {
     el.style.display = 'block';
     el.className = 'mt-2 small fw-bold ' + (tipo === 'error' ? 'text-danger' : 'text-success');
     el.innerHTML = `<i class="fa-solid fa-${tipo === 'error' ? 'circle-xmark' : 'check'} me-1"></i>${texto}`;
 }
 
+// ── FINALIZAR ATENCIÓN ────────────────────────────────────────
 async function finalizarAtencion() {
     const barberoId = document.getElementById('consumoBarberoId').value;
-    if (!confirm('¿Confirmar pago y liberar la silla?')) return;
 
-    const res = await fetch(`/secretario/recepcion/finalizar-pago/${barberoId}`);
+    confirmarAccion('¿Confirmar pago y liberar la silla?', async () => {
+        try {
+            // ✅ Usamos fetch con redirect:manual para capturar el redirect sin seguirlo
+            const res = await fetch(`/secretario/recepcion/finalizar-pago/${barberoId}`, {
+                method: 'GET',
+                redirect: 'manual',
+                headers: { 'X-CSRF-TOKEN': getCsrf() }
+            });
 
-    // La respuesta es un redirect, así que recargamos con mensaje
-    if (res.redirected || res.ok) {
-        // Mostrar modal de resumen antes de redirigir
-        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content || '';
-        const resNota = await fetch(`/secretario/recepcion/ultima-nota?barberoId=${barberoId}`, {
-            headers: { 'X-CSRF-TOKEN': csrfToken }
-        });
-        if (resNota.ok) {
-            const nota = await resNota.json();
-            mostrarResumenNota(nota);
-        } else {
-            window.location.href = '/secretario/recepcion';
+            // Cerramos el modal de gestionar
+            if (modalGestionar) modalGestionar.hide();
+
+            // Buscamos la última nota de este barbero
+            const resNota = await fetch(`/secretario/recepcion/ultima-nota?barberoId=${barberoId}`);
+            if (resNota.ok) {
+                const nota = await resNota.json();
+                mostrarResumenNota(nota);
+            } else {
+                mostrarToast('exito', '¡Pago procesado!', 'Silla liberada correctamente.');
+                setTimeout(() => window.location.href = '/secretario/recepcion', 2000);
+            }
+        } catch (e) {
+            mostrarToast('error', 'Error', e.message);
         }
-    }
+    });
 }
 
+// ── MOSTRAR RESUMEN NOTA ──────────────────────────────────────
 function mostrarResumenNota(nota) {
-    document.getElementById('resumenNotaId').textContent    = '#' + nota.id;
+    document.getElementById('resumenNotaId').textContent = '#' + nota.id;
     document.getElementById('resumenNotaFecha').textContent = nota.fecha;
     document.getElementById('resumenNotaCliente').textContent = nota.cliente || 'Sin registro';
     document.getElementById('resumenNotaBarbero').textContent = nota.barbero || '—';
-    document.getElementById('resumenNotaTotal').textContent  = 'S/ ' + Number(nota.total).toFixed(2);
+    document.getElementById('resumenNotaTotal').textContent = 'S/ ' + Number(nota.total).toFixed(2);
 
     const tbody = document.getElementById('resumenNotaDetalles');
     tbody.innerHTML = '';

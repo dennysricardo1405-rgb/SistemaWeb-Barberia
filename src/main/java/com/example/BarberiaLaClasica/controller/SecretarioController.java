@@ -4,6 +4,7 @@ import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.model.Cliente;
 import com.example.BarberiaLaClasica.service.CitaService;
 import com.example.BarberiaLaClasica.service.ClienteService;
+import com.example.BarberiaLaClasica.service.RecepcionService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ResponseBody;
 import java.util.Map;
+import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
 
 @Controller
@@ -27,6 +30,8 @@ public class SecretarioController {
     private CitaService citaService;
     @Autowired
     private ClienteService clienteService;
+    @Autowired
+    private RecepcionService recepcionService;
 
     // 1. DASHBOARD DEL SECRETARIO (Vista Principal con la Agenda de Citas)
     @GetMapping("/dashboard")
@@ -105,5 +110,32 @@ public class SecretarioController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/recepcion/api-estado-barbero/{barberoId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> estadoBarbero(
+            @PathVariable Long barberoId) {
+
+        Map<String, Object> resp = new HashMap<>();
+
+        recepcionService.getCitaReservaHoy(barberoId).ifPresentOrElse(cita -> {
+            LocalTime ahora = LocalTime.now();
+            LocalTime horaRes = cita.getHoraInicio();
+            long minutos = java.time.Duration.between(ahora, horaRes).toMinutes();
+
+            resp.put("tieneReserva", true);
+            resp.put("horaReserva", horaRes.toString());
+            resp.put("minutosRestantes", minutos);
+            resp.put("bloqueado", minutos >= 0 && minutos <= 30);
+            resp.put("cliente", cita.getCliente() != null
+                    ? cita.getCliente().getNombres() + " " + cita.getCliente().getApellidos()
+                    : "—");
+        }, () -> {
+            resp.put("tieneReserva", false);
+            resp.put("bloqueado", false);
+        });
+
+        return ResponseEntity.ok(resp);
     }
 }
