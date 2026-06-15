@@ -83,7 +83,7 @@
                 th:classappend="${activePage == 'compras_proveedor' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-ramp-box"></i> Entrada de Stock
             </a>
-            <a href="/admin/barberos/sueldos" class="nav-link" th:classappend="${activePage == 'sueldos' ? ' active' : ''}">
+            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/barberos/sueldos" class="nav-link" th:classappend="${activePage == 'sueldos' ? ' active' : ''}">
                 <i class="fa-solid fa-sack-dollar"></i> Sueldos
             </a>
             <!-- REPORTES -->
