@@ -101,8 +101,8 @@
                         <!-- Stats -->
                         <div class="stats-row">
                             <div class="stat-item">
-                                <div class="stat-value stat-gold" th:text="${datos['totalCitas']}">0</div>
-                                <div class="stat-label">Citas</div>
+                                <div class="stat-value stat-gold" th:text="${datos['totalNotas']}">0</div>
+                                <div class="stat-label">Atenciones</div>
                             </div>
                             <div class="stat-item">
                                 <div class="stat-value"
@@ -125,36 +125,47 @@
 
                     <!-- Detalle de citas (expandible) -->
                     <div class="citas-detalle" th:id="'detalle-' + ${b.id}">
-                        <table th:if="${!#lists.isEmpty(datos['citas'])}">
+                        <table th:if="${!#lists.isEmpty(datos['notas'])}">
                             <thead>
                                 <tr>
                                     <th>Fecha</th>
-                                    <th>Hora</th>
                                     <th>Cliente</th>
-                                    <th>Servicio</th>
-                                    <th class="text-end">Total cita</th>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Total</th>
                                     <th class="text-end">Comisión (50%)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr th:each="cita : ${datos['citas']}">
-                                    <td th:text="${#temporals.format(cita.fecha, 'dd/MM/yyyy')}">—</td>
-                                    <td th:text="${#temporals.format(cita.horaInicio, 'HH:mm')}">—</td>
-                                    <td
-                                        th:text="${cita.cliente != null ? cita.cliente.nombres + ' ' + cita.cliente.apellidos : 'Anónimo'}">
-                                        —</td>
-                                    <td th:text="${cita.servicio.nombre}">—</td>
+                                <tr th:each="nota : ${datos['notas']}">
+                                    <td th:text="${#temporals.format(nota.fecha, 'dd/MM/yyyy HH:mm')}">—</td>
+                                    <td th:text="${nota.cliente != null ? 
+                               nota.cliente.nombres + ' ' + nota.cliente.apellidos : 
+                               'Cliente sin registro'}">—</td>
+                                    <td>
+                                        <span th:if="${nota.session?.cita != null}" style="background:rgba(46,204,113,0.12);color:#2ecc71;
+                                 border:1px solid rgba(46,204,113,0.3);
+                                 border-radius:12px;padding:2px 8px;font-size:0.72rem;
+                                 font-weight:700;">
+                                            Reserva Web
+                                        </span>
+                                        <span th:if="${nota.session?.cita == null}" style="background:rgba(201,168,76,0.12);color:#c9a84c;
+                                 border:1px solid rgba(201,168,76,0.3);
+                                 border-radius:12px;padding:2px 8px;font-size:0.72rem;
+                                 font-weight:700;">
+                                            Precensial
+                                        </span>
+                                    </td>
                                     <td class="text-end td-precio"
-                                        th:text="'S/. ' + ${#numbers.formatDecimal(cita.totalPrecio, 1, 2)}">—</td>
+                                        th:text="'S/. ' + ${#numbers.formatDecimal(nota.total, 1, 2)}">—</td>
                                     <td class="text-end td-comision"
-                                        th:text="'S/. ' + ${#numbers.formatDecimal(cita.totalPrecio.multiply(new java.math.BigDecimal('0.50')), 1, 2)}">
-                                        —</td>
+                                        th:text="'S/. ' + ${#numbers.formatDecimal(nota.total * 0.50, 1, 2)}">—</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <div th:if="${#lists.isEmpty(datos['citas'])}" class="sin-citas">
+
+                        <div th:if="${#lists.isEmpty(datos['notas'])}" class="sin-citas">
                             <i class="fa-solid fa-calendar-xmark d-block fs-3 mb-2 opacity-25"></i>
-                            Sin citas completadas en este periodo.
+                            Sin atenciones en este periodo.
                         </div>
                     </div>
 
