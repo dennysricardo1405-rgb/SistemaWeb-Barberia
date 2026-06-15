@@ -2,13 +2,16 @@ package com.example.BarberiaLaClasica.controller;
 
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.model.Cita;
+import com.example.BarberiaLaClasica.model.NotaVenta;
 import com.example.BarberiaLaClasica.repository.CitaRepository;
+import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
 import com.example.BarberiaLaClasica.service.BarberoService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +35,8 @@ public class BarberoController {
     private BarberoService barberoService;
     @Autowired
     private CitaRepository citaRepository;
+    @Autowired
+    private NotaVentaRepository notaVentaRepository;
     private static final String[] DIAS = { "MARTES", "MIERCOLES" };
 
     // ── Lista con Paginación ─────────────────────────────────────
@@ -184,71 +189,57 @@ public class BarberoController {
         return "redirect:/admin/barberos";
     }
 
-    @GetMapping("/sueldos")
-    public String vistasSueldos(
-            @RequestParam(required = false) Integer mes,
-            @RequestParam(required = false) Integer anio,
-            Model model) {
+   @GetMapping("/sueldos")
+public String vistasSueldos(
+        @RequestParam(required = false) Integer mes,
+        @RequestParam(required = false) Integer anio,
+        Model model) {
 
-        // Si no se pasa mes/año usa el mes actual
-        YearMonth periodo = (mes != null && anio != null)
-                ? YearMonth.of(anio, mes)
-                : YearMonth.now();
+    YearMonth periodo = (mes != null && anio != null)
+            ? YearMonth.of(anio, mes)
+            : YearMonth.now();
 
-        LocalDate inicio = periodo.atDay(1);
-        LocalDate fin = periodo.atEndOfMonth();
+    List<Barbero> barberos = barberoService.listarTodos();
+    Map<Barbero, Map<String, Object>> resumen = new LinkedHashMap<>();
 
-        // Citas COMPLETADAS del periodo para cada barbero
-        List<Barbero> barberos = barberoService.listarTodos();
+    for (Barbero b : barberos) {
+        // ← Ahora usa NotaVenta en vez de Cita
+        List<NotaVenta> notas = notaVentaRepository
+                .findByBarberoAndPeriodo(b, periodo.getYear(), periodo.getMonthValue());
 
-        // Mapa: barbero → resumen de comisiones
-        Map<Barbero, Map<String, Object>> resumen = new LinkedHashMap<>();
-
-        for (Barbero b : barberos) {
-            List<Cita> citas = citaRepository
-                    .findByBarberoAndEstadoAndFechaBetweenOrderByFechaAsc(b, 3, inicio, fin);
-
-            BigDecimal totalGenerado = citas.stream()
-                    .map(Cita::getTotalPrecio)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            BigDecimal comision = totalGenerado
-                    .multiply(BigDecimal.valueOf(0.50))
-                    .setScale(2, RoundingMode.HALF_UP);
-
-            Map<String, Object> datos = new LinkedHashMap<>();
-            datos.put("citas", citas);
-            datos.put("totalCitas", citas.size());
-            datos.put("totalGenerado", totalGenerado);
-            datos.put("comision", comision);
-
-            resumen.put(b, datos);
-        }
-
-        // Lista de meses disponibles para el selector (últimos 12)
-        List<YearMonth> mesesDisponibles = new java.util.ArrayList<>();
-        for (int i = 0; i < 12; i++) {
-            mesesDisponibles.add(YearMonth.now().minusMonths(i));
-        }
-
-        model.addAttribute("resumen", resumen);
-        model.addAttribute("periodo", periodo);
-        model.addAttribute("mesesDisponibles", mesesDisponibles);
-        BigDecimal totalGeneralPeriodo = resumen.values().stream()
-                .map(d -> (BigDecimal) d.get("totalGenerado"))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalComisionesPeriodo = resumen.values().stream()
-                .map(d -> (BigDecimal) d.get("comision"))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        int totalCitasPeriodo = resumen.values().stream()
-                .mapToInt(d -> (int) d.get("totalCitas"))
+        double totalGenerado = notas.stream()
+                .mapToDouble(NotaVenta::getTotal)
                 .sum();
 
-        model.addAttribute("totalGeneralPeriodo", totalGeneralPeriodo);
-        model.addAttribute("totalComisionesPeriodo", totalComisionesPeriodo);
-        model.addAttribute("totalCitasPeriodo", totalCitasPeriodo);
-        return "barberos/sueldos";
+        double comision = totalGenerado * 0.50;
+
+        Map<String, Object> datos = new LinkedHashMap<>();
+        datos.put("notas",         notas);
+        datos.put("totalNotas",    notas.size());
+        datos.put("totalGenerado", totalGenerado);
+        datos.put("comision",      comision);
+
+        resumen.put(b, datos);
     }
+
+    List<YearMonth> mesesDisponibles = new ArrayList<>();
+    for (int i = 0; i < 12; i++)
+        mesesDisponibles.add(YearMonth.now().minusMonths(i));
+
+    double totalGeneralPeriodo   = resumen.values().stream()
+            .mapToDouble(d -> (double) d.get("totalGenerado")).sum();
+    double totalComisionesPeriodo = resumen.values().stream()
+            .mapToDouble(d -> (double) d.get("comision")).sum();
+    int totalAtencionesPeriodo   = resumen.values().stream()
+            .mapToInt(d -> (int) d.get("totalNotas")).sum();
+
+    model.addAttribute("resumen",                resumen);
+    model.addAttribute("periodo",                periodo);
+    model.addAttribute("mesesDisponibles",       mesesDisponibles);
+    model.addAttribute("totalGeneralPeriodo",    totalGeneralPeriodo);
+    model.addAttribute("totalComisionesPeriodo", totalComisionesPeriodo);
+    model.addAttribute("totalCitasPeriodo",      totalAtencionesPeriodo);
+
+    return "barberos/sueldos";
+}
 }
