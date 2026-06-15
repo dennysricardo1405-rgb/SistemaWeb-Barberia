@@ -15,12 +15,11 @@
                 <i class="fa-solid fa-scissors fa-lg"></i>
                 <h4 class="mb-0">Barberia "La Clasica"</h4>
             </div>
-            <small class="text-white-50 d-block text-center mt-1"
-       th:text="${#authorization.expression('hasRole(''ADMINISTRADOR'')') ? 'PANEL ADMINISTRATIVO' :
+            <small class="text-white-50 d-block text-center mt-1" th:text="${#authorization.expression('hasRole(''ADMINISTRADOR'')') ? 'PANEL ADMINISTRATIVO' :
                  (#authorization.expression('hasRole(''SECRETARIO'')') ? 'PANEL DE RECEPCIÓN' :
                  (#authorization.expression('hasRole(''BARBERO'')') ? 'PANEL DEL BARBERO' :
                  'PANEL'))}">
-</small>
+            </small>
         </div>
 
         <nav class="mt-4">
@@ -83,6 +82,9 @@
                 href="/admin/productos/compras" class="nav-link"
                 th:classappend="${activePage == 'compras_proveedor' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-ramp-box"></i> Entrada de Stock
+            </a>
+            <a href="/admin/barberos/sueldos" class="nav-link" th:classappend="${activePage == 'sueldos' ? ' active' : ''}">
+                <i class="fa-solid fa-sack-dollar"></i> Sueldos
             </a>
             <!-- REPORTES -->
             <a th:if="${#authorization.expression('hasAuthority(''GESTION_REPORTES'')')}" href="/admin/reportes"
