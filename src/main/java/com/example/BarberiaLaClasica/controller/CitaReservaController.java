@@ -64,7 +64,7 @@ public class CitaReservaController {
 
         List<Map<String, Object>> slots = new ArrayList<>();
         LocalTime hora = LocalTime.of(10, 0);
-        LocalTime cierre = LocalTime.of(23, 30);
+        LocalTime cierre = LocalTime.of(22, 00);
 
         while (hora.isBefore(cierre)) {
             Map<String, Object> slot = new HashMap<>();
