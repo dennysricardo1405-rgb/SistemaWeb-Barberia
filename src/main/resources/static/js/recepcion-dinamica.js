@@ -590,11 +590,11 @@ function actualizarDesglosePago() {
         // Validaciones dinámicas para que el flujo mixto tenga sentido
         if (montoYapeDigitado >= netoPorCobrar && btnLiberar) {
             btnLiberar.disabled = true;
-            btnLiberar.innerText = "⚠️ En Mixto, Yape debe ser menor al neto";
+            btnLiberar.innerText = "En Mixto, Yape debe ser menor al neto";
         }
         if (montoYapeDigitado <= 0 && btnLiberar) {
             btnLiberar.disabled = true;
-            btnLiberar.innerText = "⚠️ Ingresa un monto Yape válido";
+            btnLiberar.innerText = "Ingresa un monto Yape válido";
         }
     }
 }
