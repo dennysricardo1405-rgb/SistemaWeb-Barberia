@@ -179,9 +179,8 @@ public class RecepcionService {
                 .orElse(List.of());
     }
 
-    // ── Finalizar Atención ────────────────────────────────────────────────────
     @Transactional
-    public NotaVenta finalizarAtencion(Long barberoId) {
+    public NotaVenta finalizarAtencion(Long barberoId, String metodoPago, double montoYape, String codigoYape) {
         SillaSession session = getSessionActiva(barberoId)
                 .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
 

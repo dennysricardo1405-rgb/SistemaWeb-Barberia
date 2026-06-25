@@ -13,8 +13,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.transaction.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -55,6 +57,7 @@ public class CitaService {
     // ── Horas disponibles para un barbero en una fecha ───────────────────────
 
     // ── Confirmar reserva: guarda la cita con comprobante de pago ─────────────
+    @Transactional
     public Cita confirmarReserva(
             String correoCliente,
             Long servicioId,
@@ -76,22 +79,19 @@ public class CitaService {
 
         long reservasActivas = citaRepository.contarReservasActivasPorCliente(cliente.getId());
         if (reservasActivas >= 1) {
-            throw new RuntimeException(
-                    "Ya tienes una reserva pendiente o confirmada. " +
-                            "Espera a ser atendido antes de hacer una nueva reserva.");
+            throw new RuntimeException("Ya tienes una reserva pendiente o confirmada. Espera a ser atendido.");
         }
-        // Verificar que no haya conflicto de horario
+
         if (citaRepository.existeConflictoHorario(barberoId, fecha, horaInicio, horaFin)) {
             throw new RuntimeException("El horario seleccionado ya no está disponible.");
         }
 
-        // Guardar imagen del comprobante en disco
+        // Guardar la captura en el disco
         String nombreArchivo = UUID.randomUUID() + "_" + comprobante.getOriginalFilename();
         Path ruta = Paths.get(uploadDir).toAbsolutePath().normalize();
         Files.createDirectories(ruta);
         Files.copy(comprobante.getInputStream(), ruta.resolve(nombreArchivo), StandardCopyOption.REPLACE_EXISTING);
 
-        // Crear y persistir la cita
         Cita cita = new Cita();
         cita.setCliente(cliente);
         cita.setBarbero(barbero);
@@ -101,25 +101,39 @@ public class CitaService {
         cita.setHoraFin(horaFin);
         cita.setTotalPrecio(servicio.getPrecio());
         cita.setComprobantePago(nombreArchivo);
+
+        // Se inicializan en blanco, el secretario rellenará los campos reales usando el modal interactivo
+        cita.setMontoYape(BigDecimal.ZERO);
+        cita.setMontoEfectivo(BigDecimal.ZERO);
+        cita.setCodigoYape("PROCESANDO_OCR");
         cita.setEstado(1); // PENDIENTE
 
         return citaRepository.save(cita);
     }
 
     // ── Secretario: cambiar estado a ACEPTADO (2) y notificar por WhatsApp ────
-    public void aceptarCita(Long citaId) {
+    @Transactional
+    public void aceptarCitaHibridaCompleta(Long citaId, BigDecimal yapeReal, BigDecimal efectivoReal, String codigoReal) {
         Cita cita = citaRepository.findById(citaId)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
-        cita.setEstado(2);
+
+        cita.setMontoYape(yapeReal);
+        cita.setMontoEfectivo(efectivoReal);
+        
+        if (codigoReal != null && !codigoReal.equals("NO_DETECTADO") && !codigoReal.equals("Escaneando...")) {
+            cita.setCodigoYape(codigoReal);
+        }
+
+        cita.setEstado(2); // CONFIRMADA / EN SILLA
         citaRepository.save(cita);
 
-        // CAMBIA enviarWhatsApp por enviarEmail:
         if (cita.getCliente() != null && cita.getCliente().getCorreo() != null) {
             enviarEmail(cita);
         }
     }
 
     // ── Secretario: cancelar cita ─────────────────────────────────────────────
+    @Transactional
     public void cancelarCita(Long citaId) {
         Cita cita = citaRepository.findById(citaId)
                 .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
@@ -177,11 +191,11 @@ public class CitaService {
             System.out.println("✅ Email enviado a: " + cita.getCliente().getCorreo());
 
         } catch (Exception e) {
-    System.err.println("ERROR CORREO COMPLETO: " + e.getClass().getName() 
-                       + " — " + e.getMessage());
-    if (e.getCause() != null) 
-        System.err.println("CAUSA: " + e.getCause().getMessage());
-}
+            System.err.println("ERROR CORREO COMPLETO: " + e.getClass().getName()
+                    + " — " + e.getMessage());
+            if (e.getCause() != null)
+                System.err.println("CAUSA: " + e.getCause().getMessage());
+        }
     }
 
     // Historial paginado

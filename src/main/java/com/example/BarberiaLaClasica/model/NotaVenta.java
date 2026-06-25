@@ -35,4 +35,15 @@ public class NotaVenta {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
+    @Column(name = "metodo_pago", length = 20)
+    private String metodoPago = "EFECTIVO";
+ 
+    @Column(name = "monto_yape")
+    private double montoYape = 0.0;
+ 
+    @Column(name = "monto_efectivo")
+    private double montoEfectivo = 0.0;
+ 
+    @Column(name = "codigo_yape", length = 20)
+    private String codigoYape;
 }
