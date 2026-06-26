@@ -43,8 +43,8 @@ public class RecepcionController {
     // ── Panel principal con PAGINACIÓN ───────────────────────────────────────
     @GetMapping("/recepcion")
     public String verPanelRecepcion(Model model,
-                                    @RequestParam(defaultValue = "0") int page,
-                                    @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         List<Barbero> barberos = barberoService.listarTodos();
 
@@ -129,11 +129,28 @@ public class RecepcionController {
             response.put("servicio", Map.of(
                     "nombre", s.getServicio().getNombre(),
                     "precio", s.getServicio().getPrecio()));
+
             if (s.getCliente() != null) {
                 response.put("cliente", Map.of(
                         "nombres", s.getCliente().getNombres(),
                         "apellidos", s.getCliente().getApellidos(),
                         "dni", s.getCliente().getDni()));
+            }
+
+            // ── Anticipo Yape de la cita (si viene de reserva web) ───────────
+            if (s.getCita() != null) {
+                Cita cita = s.getCita();
+                if (cita.getMontoYape() != null &&
+                        cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    response.put("anticipoYape", cita.getMontoYape().doubleValue());
+                    response.put("codigoYape", cita.getCodigoYape());
+                } else {
+                    response.put("anticipoYape", 0.0);
+                    response.put("codigoYape", null);
+                }
+            } else {
+                response.put("anticipoYape", 0.0);
+                response.put("codigoYape", null);
             }
         });
 
@@ -163,9 +180,15 @@ public class RecepcionController {
 
     // ── Finalizar ─────────────────────────────────────────────────────────────
     @GetMapping("/recepcion/finalizar-pago/{barberoId}")
-    public String finalizar(@PathVariable Long barberoId, RedirectAttributes ra) {
+    public String finalizar(
+            @PathVariable Long barberoId,
+            @RequestParam(required = false, defaultValue = "EFECTIVO") String metodoPago,
+            @RequestParam(required = false, defaultValue = "0") double montoYape,
+            @RequestParam(required = false) String codigoYape,
+            RedirectAttributes ra) {
         try {
-            NotaVenta nota = recepcionService.finalizarAtencion(barberoId);
+            NotaVenta nota = recepcionService.finalizarAtencion(
+                barberoId, metodoPago, montoYape, codigoYape);
             ra.addFlashAttribute("exito", "Nota de venta #" + nota.getId() + " generada.");
         } catch (Exception e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -179,25 +202,22 @@ public class RecepcionController {
     public ResponseEntity<Map<String, Object>> detalleNota(@PathVariable Long id) {
         NotaVenta nota = recepcionService.obtenerNota(id);
 
-        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
-            Map.<String, Object>of(
-                "descripcion",    d.getDescripcion(),
-                "cantidad",       d.getCantidad(),
+        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d -> Map.<String, Object>of(
+                "descripcion", d.getDescripcion(),
+                "cantidad", d.getCantidad(),
                 "precioUnitario", d.getPrecioUnitario(),
-                "subtotal",       d.getSubtotal(),
-                "tipo",           d.getTipo()
-            )
-        ).toList();
+                "subtotal", d.getSubtotal(),
+                "tipo", d.getTipo())).toList();
 
         Map<String, Object> resp = new HashMap<>();
-        resp.put("id",       nota.getId());
-        resp.put("fecha",    nota.getFecha().format(
-                                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-        resp.put("cliente",  nota.getCliente() != null
-                                ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
-                                : null);
-        resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
-        resp.put("total",    nota.getTotal());
+        resp.put("id", nota.getId());
+        resp.put("fecha", nota.getFecha().format(
+                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        resp.put("cliente", nota.getCliente() != null
+                ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
+                : null);
+        resp.put("barbero", nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
+        resp.put("total", nota.getTotal());
         resp.put("detalles", detalles);
 
         return ResponseEntity.ok(resp);
@@ -220,19 +240,18 @@ public class RecepcionController {
     // ── NOTAS DE VENTA CON PAGINACIÓN ─────────────────────────────────────────
     @GetMapping("/recepcion/notas-venta")
     public String notas(Model model,
-                        @RequestParam(defaultValue = "0") int page,
-                        @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
 
         Page<NotaVenta> notasPage = recepcionService.listarNotasPaginadas(pageable);
 
         double totalGeneral = notasPage.getContent().stream()
-                                .mapToDouble(NotaVenta::getTotal)
-                                .sum();
+                .mapToDouble(NotaVenta::getTotal)
+                .sum();
 
-        double promedio = notasPage.getContent().isEmpty() ? 0 :
-                          totalGeneral / notasPage.getContent().size();
+        double promedio = notasPage.getContent().isEmpty() ? 0 : totalGeneral / notasPage.getContent().size();
 
         model.addAttribute("notasPage", notasPage);
         model.addAttribute("notas", notasPage.getContent());
@@ -250,12 +269,13 @@ public class RecepcionController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> ultimaNota(@RequestParam Long barberoId) {
         NotaVenta nota = recepcionService.listarNotas().stream()
-            .filter(n -> n.getBarbero() != null && n.getBarbero().getId().equals(barberoId))
+            .filter(n -> n.getBarbero() != null &&
+                         n.getBarbero().getId().equals(barberoId))
             .findFirst()
             .orElse(null);
-
+ 
         if (nota == null) return ResponseEntity.notFound().build();
-
+ 
         List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d ->
             Map.<String, Object>of(
                 "descripcion", d.getDescripcion(),
@@ -264,18 +284,22 @@ public class RecepcionController {
                 "tipo",        d.getTipo()
             )
         ).toList();
-
+ 
         Map<String, Object> resp = new HashMap<>();
-        resp.put("id",       nota.getId());
-        resp.put("fecha",    nota.getFecha().format(
-                                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-        resp.put("cliente",  nota.getCliente() != null
-                                ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
-                                : null);
-        resp.put("barbero",  nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
-        resp.put("total",    nota.getTotal());
-        resp.put("detalles", detalles);
-
+        resp.put("id",             nota.getId());
+        resp.put("fecha",          nota.getFecha().format(
+                                     java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        resp.put("cliente",        nota.getCliente() != null
+                                     ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
+                                     : null);
+        resp.put("barbero",        nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
+        resp.put("total",          nota.getTotal());
+        resp.put("metodoPago",     nota.getMetodoPago());
+        resp.put("montoYape",      nota.getMontoYape());
+        resp.put("montoEfectivo",  nota.getMontoEfectivo());
+        resp.put("codigoYape",     nota.getCodigoYape());
+        resp.put("detalles",       detalles);
+ 
         return ResponseEntity.ok(resp);
     }
 }

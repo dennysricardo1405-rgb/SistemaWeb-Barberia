@@ -91,10 +91,14 @@ public class SecretarioController {
     // ── Aceptar cita + enviar WhatsApp ────────────────────────────────────────
     @PostMapping("/citas/{id}/aceptar")
     @ResponseBody
-    public ResponseEntity<Map<String, String>> aceptarCita(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> aceptarCita(
+            @PathVariable Long id,
+            @RequestParam(name = "montoYape", defaultValue = "0") java.math.BigDecimal montoYape,
+            @RequestParam(name = "montoEfectivo", defaultValue = "0") java.math.BigDecimal montoEfectivo,
+            @RequestParam(name = "codigoYape", required = false) String codigoYape) {
         try {
-            citaService.aceptarCita(id);
-            return ResponseEntity.ok(Map.of("mensaje", "Cita confirmada. Se notificó al cliente por WhatsApp."));
+            citaService.aceptarCitaHibridaCompleta(id, montoYape, montoEfectivo, codigoYape);
+            return ResponseEntity.ok(Map.of("mensaje", "Cuenta auditada y confirmada con éxito."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

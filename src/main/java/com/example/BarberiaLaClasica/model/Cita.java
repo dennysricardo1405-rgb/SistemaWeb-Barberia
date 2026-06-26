@@ -1,12 +1,12 @@
 package com.example.BarberiaLaClasica.model;
 
 import jakarta.persistence.*;
-import lombok.Data; // Importamos Lombok para automatizar el código limpio
+import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "citas")
@@ -17,8 +17,6 @@ public class Cita {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Relación corregida y limpia con la entidad Cliente (acepta NULL para clientes
-    // libres)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cliente_id", nullable = true)
     private Cliente cliente;
@@ -47,15 +45,27 @@ public class Cita {
     @Column(name = "total_precio", nullable = false)
     private BigDecimal totalPrecio;
 
+    // --- COLUMNAS NUEVAS PARA PAGO MIXTO Y AUDITORÍA ---
+    @Column(name = "monto_yape", nullable = false, precision = 10, scale = 2)
+    private BigDecimal montoYape = BigDecimal.ZERO;
+
+    @Column(name = "monto_efectivo", nullable = false, precision = 10, scale = 2)
+    private BigDecimal montoEfectivo = BigDecimal.ZERO;
+
+    @Column(name = "codigo_yape", nullable = true, length = 50)
+    private String codigoYape;
+    // ---------------------------------------------------
+
     @CreationTimestamp
     @Column(name = "fecha_registro", updatable = false)
     private LocalDateTime fechaRegistro;
+
     @Column(name = "comprobante_pago", nullable = true)
     private String comprobantePago;
+
     @Column(name = "reprogramada", nullable = false)
     private boolean reprogramada = false;
 
-    // Constructor vacío requerido por JPA
     public Cita() {
     }
 }
