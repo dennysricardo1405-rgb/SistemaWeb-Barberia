@@ -49,7 +49,6 @@ function mostrarToast(tipo, titulo, mensaje) {
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 4500);
 }
 
-// Inyectar animación CSS una sola vez
 if (!document.getElementById('toastAnim')) {
     const style = document.createElement('style');
     style.id = 'toastAnim';
@@ -57,7 +56,7 @@ if (!document.getElementById('toastAnim')) {
     document.head.appendChild(style);
 }
 
-// ── CONFIRMAR BONITO (reemplaza confirm()) ─────────────────────
+// ── CONFIRMAR ACCIÓN SILLA ─────────────────────────────────────
 function confirmarAccion(mensaje, onAceptar) {
     let modal = document.getElementById('modalConfirmacion');
     if (!modal) {
@@ -91,14 +90,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elGestionar) modalGestionar = new bootstrap.Modal(elGestionar);
 
     document.addEventListener('click', e => {
-        // Walk-in normal (sin reserva)
         const btnOcupar = e.target.closest('.btn-ocupar');
         if (btnOcupar) {
             abrirModalOcupar(btnOcupar.dataset.id, btnOcupar.dataset.nombre);
             return;
         }
 
-        // Walk-in con reserva
         const btnConReserva = e.target.closest('.btn-ocupar-con-reserva');
         if (btnConReserva) {
             const barberoId = btnConReserva.dataset.id;
@@ -109,27 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(r => r.json())
                 .then(data => {
                     if (data.bloqueado) {
-                        mostrarToast('warning',
-                            'Reserva próxima',
-                            `${data.cliente} tiene cita a las ${horaReserva} ` +
-                            `(en ${data.minutosRestantes} min). ` +
-                            `Usa "Atender Reserva".`);
+                        mostrarToast('warning', 'Reserva próxima', `${data.cliente} tiene cita a las ${horaReserva} (en ${data.minutosRestantes} min). Usa "Atender Reserva".`);
                     } else {
                         const mins = data.minutosRestantes;
-                        const aviso = mins > 0
-                            ? `⚠ Hay reserva a las ${horaReserva} (en ${mins} min).`
-                            : '';
-                        confirmarAccion(
-                            `Iniciar Reserva con ${barberoNombre}. ${aviso} ¿Continuar?`,
-                            () => abrirModalOcupar(barberoId, barberoNombre)
-                        );
+                        const aviso = mins > 0 ? `⚠ Hay reserva a las ${horaReserva} (en ${mins} min).` : '';
+                        confirmarAccion(`Iniciar Reserva con ${barberoNombre}. ${aviso} ¿Continuar?`, () => abrirModalOcupar(barberoId, barberoNombre));
                     }
                 })
                 .catch(() => abrirModalOcupar(barberoId, barberoNombre));
             return;
         }
 
-        // Gestionar cuenta
         const btnGestionar = e.target.closest('.btn-gestionar');
         if (btnGestionar) {
             abrirModalGestionar(btnGestionar.dataset.id, btnGestionar.dataset.nombre);
@@ -157,7 +144,6 @@ function abrirModalGestionar(id, nombre) {
     if (inputCod) inputCod.value = '';
     const anticipoDiv = document.getElementById('anticipoYapeInfo');
     if (anticipoDiv) anticipoDiv.style.display = 'none';
-    // ─────────────────────────────────────────────────────────────────
 
     switchGestionTab('existente');
     cargarConsumosDeSilla(id);
@@ -170,14 +156,11 @@ function cargarConsumosDeSilla(barberoId) {
         .then(data => {
             const labelServicio = document.getElementById('labelServicioActual');
             if (labelServicio) {
-                labelServicio.textContent = data.servicio
-                    ? data.servicio.nombre + '  ·  S/ ' + Number(data.servicio.precio).toFixed(2)
-                    : '—';
+                labelServicio.textContent = data.servicio ? data.servicio.nombre + '  ·  S/ ' + Number(data.servicio.precio).toFixed(2) : '—';
             }
 
             if (data.cliente) {
-                document.getElementById('clienteGestionNombre').textContent =
-                    data.cliente.nombres + ' ' + data.cliente.apellidos + ' — ' + data.cliente.dni;
+                document.getElementById('clienteGestionNombre').textContent = data.cliente.nombres + ' ' + data.cliente.apellidos + ' — ' + data.cliente.dni;
                 document.getElementById('clienteGestionInfo').style.display = 'block';
             }
 
@@ -201,8 +184,7 @@ function cargarConsumosDeSilla(barberoId) {
             }
 
             if (!data.consumos || data.consumos.length === 0) {
-                tbody.innerHTML += `
-                <tr><td colspan="5" class="text-center text-muted py-2 small"><i class="fa-solid fa-box-open me-1"></i>Sin productos agregados aún</td></tr>`;
+                tbody.innerHTML += `<tr><td colspan="5" class="text-center text-muted py-2 small"><i class="fa-solid fa-box-open me-1"></i>Sin productos agregados aún</td></tr>`;
             } else {
                 data.consumos.forEach(c => {
                     tbody.innerHTML += `
@@ -220,24 +202,20 @@ function cargarConsumosDeSilla(barberoId) {
                 });
             }
 
-            // Cálculos del acumulado
             const totalConsumos = data.total || 0;
             const precioServicio = data.servicio ? Number(data.servicio.precio) : 0;
             const totalAcumulado = totalConsumos + precioServicio;
 
             document.getElementById('textoTotalSilla').textContent = 'S/ ' + totalAcumulado.toFixed(2);
 
-            // Inyectar el anticipo de Yape de la cita si existe
             const anticipoWeb = data.anticipoYape ? parseFloat(data.anticipoYape) : 0;
             document.getElementById('lblAnticipoWeb').innerText = anticipoWeb.toFixed(2);
 
-            // Mostrar u ocultar la cinta de alerta superior
             mostrarAnticipoYape(data);
         })
         .catch(err => console.error('Error cargando consumos:', err));
 }
 
-// ── AGREGAR PRODUCTO ──────────────────────────────────────────
 function agregarProductoDirecto(productoId) {
     const barberoId = document.getElementById('consumoBarberoId').value;
     const cantInput = document.getElementById(`cant-${productoId}`);
@@ -250,7 +228,6 @@ function agregarProductoDirecto(productoId) {
         .then(r => r.json())
         .then(data => {
             if (data.error) {
-                // ✅ Toast en vez de alert feo
                 mostrarToast('error', 'Stock insuficiente', data.error);
                 return;
             }
@@ -261,7 +238,6 @@ function agregarProductoDirecto(productoId) {
         .catch(err => mostrarToast('error', 'Error', err.message));
 }
 
-// ── QUITAR CONSUMO ────────────────────────────────────────────
 function quitarConsumoDeSilla(consumoId, barberoId) {
     confirmarAccion('¿Remover este producto de la cuenta?', () => {
         fetch(`/secretario/recepcion/api-consumos/eliminar/${consumoId}`, {
@@ -277,15 +253,12 @@ function quitarConsumoDeSilla(consumoId, barberoId) {
     });
 }
 
-// ── FILTRAR PRODUCTOS ─────────────────────────────────────────
 function filtrarProductos(texto) {
     document.querySelectorAll('.fila-producto').forEach(fila => {
-        fila.style.display =
-            fila.dataset.nombre.toLowerCase().includes(texto.toLowerCase()) ? '' : 'none';
+        fila.style.display = fila.dataset.nombre.toLowerCase().includes(texto.toLowerCase()) ? '' : 'none';
     });
 }
 
-// ── TABS GESTIONAR ────────────────────────────────────────────
 function switchGestionTab(tab) {
     document.getElementById('gTabExistente').style.display = tab === 'existente' ? 'block' : 'none';
     document.getElementById('gTabNuevo').style.display = tab === 'nuevo' ? 'block' : 'none';
@@ -295,13 +268,10 @@ function switchGestionTab(tab) {
     Object.entries(btns).forEach(([key, id]) => {
         const btn = document.getElementById(id);
         if (!btn) return;
-        btn.className = key === tab
-            ? 'btn btn-sm fw-bold px-3 rounded-pill btn-warning text-dark'
-            : 'btn btn-sm fw-bold px-3 rounded-pill btn-outline-secondary text-white';
+        btn.className = key === tab ? 'btn btn-sm fw-bold px-3 rounded-pill btn-warning text-dark' : 'btn btn-sm fw-bold px-3 rounded-pill btn-outline-secondary text-white';
     });
 }
 
-// ── BUSCAR CLIENTE EN GESTIONAR ───────────────────────────────
 let timeoutGestion = null;
 function buscarClienteGestion(valor) {
     const resultado = document.getElementById('resultadoBusquedaGestion');
@@ -329,11 +299,8 @@ function buscarClienteGestion(valor) {
                         <span class="fw-bold text-white small">${cli.nombres} ${cli.apellidos}</span>
                         <span class="text-muted font-monospace ms-2 small">${cli.dni}</span>
                     </div>
-                    <button type="button" class="btn btn-sm btn-success py-0 px-2 rounded-pill small fw-bold">
-                        Seleccionar
-                    </button>`;
-                    div.querySelector('button').onclick = () =>
-                        asociarClienteGestion(cli.id, `${cli.nombres} ${cli.apellidos}`, cli.dni);
+                    <button type="button" class="btn btn-sm btn-success py-0 px-2 rounded-pill small fw-bold">Seleccionar</button>`;
+                    div.querySelector('button').onclick = () => asociarClienteGestion(cli.id, `${cli.nombres} ${cli.apellidos}`, cli.dni);
                     resultado.appendChild(div);
                 });
             })
@@ -344,14 +311,10 @@ function buscarClienteGestion(valor) {
     }, 350);
 }
 
-// ── ASOCIAR CLIENTE A SESIÓN ──────────────────────────────────
 async function asociarClienteGestion(clienteId, nombre, dni) {
     const barberoId = document.getElementById('consumoBarberoId').value;
     try {
-        const res = await fetch(
-            `/secretario/recepcion/asociar-cliente?barberoId=${barberoId}&clienteId=${clienteId}`,
-            { method: 'POST', headers: { 'X-CSRF-TOKEN': getCsrf() } }
-        );
+        const res = await fetch(`/secretario/recepcion/asociar-cliente?barberoId=${barberoId}&clienteId=${clienteId}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': getCsrf() } });
         if (!res.ok) {
             const err = await res.json();
             mostrarToast('error', 'Error', err.error || 'No se pudo asociar.');
@@ -367,7 +330,6 @@ async function asociarClienteGestion(clienteId, nombre, dni) {
     }
 }
 
-// ── LIMPIAR CLIENTE GESTIONAR ─────────────────────────────────
 function limpiarClienteGestion() {
     const info = document.getElementById('clienteGestionInfo');
     const nombre = document.getElementById('clienteGestionNombre');
@@ -379,7 +341,6 @@ function limpiarClienteGestion() {
     if (resultado) resultado.style.display = 'none';
 }
 
-// ── BUSCAR DNI NUEVO CLIENTE ──────────────────────────────────
 async function buscarDniGestionNuevo() {
     const dni = document.getElementById('gNuevoDni').value.trim();
     if (dni.length !== 8) return;
@@ -391,7 +352,6 @@ async function buscarDniGestionNuevo() {
     } catch { }
 }
 
-// ── REGISTRAR NUEVO CLIENTE Y ASOCIAR ────────────────────────
 async function registrarYAsociarCliente() {
     const dni = document.getElementById('gNuevoDni').value.trim();
     const nombres = document.getElementById('gNuevoNombres').value.trim();
@@ -415,66 +375,43 @@ async function registrarYAsociarCliente() {
 
         mostrarMsg(msg, 'exito', `Cliente ${data.nombres} guardado.`);
         await asociarClienteGestion(data.id, `${data.nombres} ${data.apellidos}`, data.dni);
-        ['gNuevoDni', 'gNuevoNombres', 'gNuevoApellidos', 'gNuevoTelefono', 'gNuevoCorreo']
-            .forEach(id => document.getElementById(id).value = '');
+        ['gNuevoDni', 'gNuevoNombres', 'gNuevoApellidos', 'gNuevoTelefono', 'gNuevoCorreo'].forEach(id => document.getElementById(id).value = '');
         switchGestionTab('existente');
     } catch {
         mostrarMsg(msg, 'error', 'Error de conexión.');
     }
 }
 
-// ── HELPER MENSAJES INLINE ────────────────────────────────────
 function mostrarMsg(el, tipo, texto) {
     el.style.display = 'block';
     el.className = 'mt-2 small fw-bold ' + (tipo === 'error' ? 'text-danger' : 'text-success');
     el.innerHTML = `<i class="fa-solid fa-${tipo === 'error' ? 'circle-xmark' : 'check'} me-1"></i>${texto}`;
 }
 
-// ── FINALIZAR ATENCIÓN ────────────────────────────────────────
 async function finalizarAtencion() {
     const barberoId = document.getElementById('consumoBarberoId').value;
-
-    // ── Leer datos de pago del panel ──────────────────────────────────────────
     const metodoPago = document.getElementById('selectMetodoPago')?.value || 'EFECTIVO';
     const montoYape = parseFloat(document.getElementById('inputMontoYape')?.value || '0') || 0;
     const codigoYape = document.getElementById('inputCodigoYape')?.value?.trim() || '';
 
-    // Validar pago mixto
-    const totalTexto = document.getElementById('textoTotalSilla')?.textContent || 'S/ 0';
-    const totalNum = parseFloat(totalTexto.replace('S/ ', '')) || 0;
-
-    if (metodoPago === 'MIXTO' && montoYape <= 0) {
-        mostrarToast('error', 'Pago mixto', 'Ingresa el monto pagado por Yape.');
-        return;
-    }
-    if (metodoPago === 'YAPE' && montoYape <= 0) {
-        mostrarToast('error', 'Pago Yape', 'Ingresa el monto pagado por Yape.');
-        return;
-    }
-    if (metodoPago === 'MIXTO' && montoYape >= totalNum) {
-        mostrarToast('error', 'Pago mixto', 'Si el total es Yape, selecciona método "Solo Yape".');
+    if ((metodoPago === 'MIXTO' || metodoPago === 'YAPE') && montoYape <= 0) {
+        mostrarToast('error', 'Falta monto', 'Ingresa el monto pagado por Yape.');
         return;
     }
 
     confirmarAccion('¿Confirmar pago y liberar la silla?', async () => {
         try {
-            // Construir URL con parámetros de pago
-            const params = new URLSearchParams({
-                metodoPago,
-                montoYape,
-                ...(codigoYape && { codigoYape })
-            });
-
-            const res = await fetch(
-                `/secretario/recepcion/finalizar-pago/${barberoId}?${params}`,
-                { method: 'GET', redirect: 'manual', headers: { 'X-CSRF-TOKEN': getCsrf() } }
-            );
+            const params = new URLSearchParams({ metodoPago, montoYape, ...(codigoYape && { codigoYape }) });
+            const res = await fetch(`/secretario/recepcion/finalizar-pago/${barberoId}?${params}`, { method: 'GET', redirect: 'manual', headers: { 'X-CSRF-TOKEN': getCsrf() } });
 
             if (modalGestionar) modalGestionar.hide();
 
-            const resNota = await fetch(
-                `/secretario/recepcion/ultima-nota?barberoId=${barberoId}`
-            );
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+
+            const resNota = await fetch(`/secretario/recepcion/ultima-nota?barberoId=${barberoId}`);
             if (resNota.ok) {
                 const nota = await resNota.json();
                 mostrarResumenNota(nota);
@@ -488,7 +425,6 @@ async function finalizarAtencion() {
     });
 }
 
-// ── MOSTRAR RESUMEN NOTA ──────────────────────────────────────
 function mostrarResumenNota(nota) {
     document.getElementById('resumenNotaId').textContent = '#' + nota.id;
     document.getElementById('resumenNotaFecha').textContent = nota.fecha;
@@ -496,7 +432,6 @@ function mostrarResumenNota(nota) {
     document.getElementById('resumenNotaBarbero').textContent = nota.barbero || '—';
     document.getElementById('resumenNotaTotal').textContent = 'S/ ' + Number(nota.total).toFixed(2);
 
-    // Desglose de pago
     const pagoEl = document.getElementById('resumenNotaPago');
     if (pagoEl) {
         let html = '';
@@ -516,12 +451,7 @@ function mostrarResumenNota(nota) {
     const tbody = document.getElementById('resumenNotaDetalles');
     tbody.innerHTML = '';
     nota.detalles.forEach(d => {
-        tbody.innerHTML += `
-            <tr>
-                <td>${d.descripcion}</td>
-                <td class="text-center">${d.cantidad}</td>
-                <td class="text-end">S/ ${Number(d.subtotal).toFixed(2)}</td>
-            </tr>`;
+        tbody.innerHTML += `<tr><td>${d.descripcion}</td><td class="text-center">${d.cantidad}</td><td class="text-end">S/ ${Number(d.subtotal).toFixed(2)}</td></tr>`;
     });
 
     new bootstrap.Modal(document.getElementById('modalResumenNota')).show();
@@ -531,55 +461,37 @@ function actualizarDesglosePago() {
     const metodo = document.getElementById('selectMetodoPago')?.value || 'EFECTIVO';
     const totalText = document.getElementById('textoTotalSilla')?.textContent || 'S/ 0';
     const totalAcumulado = parseFloat(totalText.replace('S/ ', '')) || 0;
+    const anticipoWeb = parseFloat(document.getElementById('lblAnticipoWeb')?.innerText || '0') || 0;
     
-    // El anticipo previo que vino en la reserva
-    const anticipoWeb = parseFloat(document.getElementById('lblAnticipoWeb').innerText) || 0;
-    
-    // Balance neto real por cobrar en caja física
     const netoPorCobrar = Math.max(0, totalAcumulado - anticipoWeb);
-    document.getElementById('lblNetoPorCobrar').innerText = netoPorCobrar.toFixed(2);
+    const lblNeto = document.getElementById('lblNetoPorCobrar');
+    if (lblNeto) lblNeto.innerText = netoPorCobrar.toFixed(2);
 
     const inputMontoYape = document.getElementById('inputMontoYape');
     const panelYape = document.getElementById('panelYape');
     const labelEfectivo = document.getElementById('labelEfectivoRestante');
     const btnLiberar = document.getElementById('btnLiberarSillaFinal');
 
-    // Mostrar el panel de Yape (monto y código) tanto en YAPE como en MIXTO
     if (panelYape) panelYape.style.display = (metodo === 'YAPE' || metodo === 'MIXTO') ? 'block' : 'none';
 
-    // Resetear estados del botón de liberación
     if (btnLiberar) {
         btnLiberar.disabled = false;
         btnLiberar.innerHTML = '<i class="fa-solid fa-cash-register me-1"></i> Procesar Pago y Liberar Silla';
     }
 
-    // ── MÉTODO: EFECTIVO ──
     if (metodo === 'EFECTIVO') {
-        if (inputMontoYape) {
-            inputMontoYape.value = 0;
-            inputMontoYape.readOnly = true;
-        }
+        if (inputMontoYape) { inputMontoYape.value = 0; inputMontoYape.readOnly = true; }
         if (labelEfectivo) labelEfectivo.style.display = 'none';
     } 
-    // ── MÉTODO: YAPE (Igual que efectivo, automático y bloqueado) ──
     else if (metodo === 'YAPE') {
-        if (inputMontoYape) {
-            inputMontoYape.value = netoPorCobrar.toFixed(2); // Pone el 100% neto restante automáticamente
-            inputMontoYape.readOnly = true; // Bloquea la edición por completo 🔒
-        }
+        if (inputMontoYape) { inputMontoYape.value = netoPorCobrar.toFixed(2); inputMontoYape.readOnly = true; }
         if (labelEfectivo) labelEfectivo.style.display = 'none';
     } 
-    // ── MÉTODO: MIXTO (Único donde se digita la parte de Yape) ──
     else if (metodo === 'MIXTO') {
-        if (inputMontoYape) {
-            inputMontoYape.readOnly = false; // Aquí sí se edita
-        }
+        if (inputMontoYape) inputMontoYape.readOnly = false;
         
         let montoYapeDigitado = parseFloat(inputMontoYape?.value || '0') || 0;
-        if (montoYapeDigitado < 0) {
-            montoYapeDigitado = 0;
-            inputMontoYape.value = 0;
-        }
+        if (montoYapeDigitado < 0) { montoYapeDigitado = 0; inputMontoYape.value = 0; }
 
         const efectivoRestante = Math.max(0, netoPorCobrar - montoYapeDigitado);
         if (labelEfectivo) {
@@ -587,32 +499,27 @@ function actualizarDesglosePago() {
             labelEfectivo.style.display = 'block';
         }
 
-        // Validaciones dinámicas para que el flujo mixto tenga sentido
         if (montoYapeDigitado >= netoPorCobrar && btnLiberar) {
             btnLiberar.disabled = true;
-            btnLiberar.innerText = "En Mixto, Yape debe ser menor al neto";
+            btnLiberar.innerText = "⚠️ En Mixto, Yape debe ser menor al neto";
         }
         if (montoYapeDigitado <= 0 && btnLiberar) {
             btnLiberar.disabled = true;
-            btnLiberar.innerText = "Ingresa un monto Yape válido";
+            btnLiberar.innerText = "⚠️ Ingresa un monto Yape válido";
         }
     }
 }
 
 function seleccionarMetodoPago(metodo) {
-    document.getElementById('selectMetodoPago').value = metodo;
+    const selMetodo = document.getElementById('selectMetodoPago');
+    if (selMetodo) selMetodo.value = metodo;
 
-    // Estilos de los botones
     document.querySelectorAll('.btn-metodo').forEach(btn => {
         const m = btn.dataset.metodo;
         if (m === metodo) {
-            if (m === 'EFECTIVO') {
-                btn.style.cssText = 'background:#1a3a27; border:1px solid #2ecc71; color:#2ecc71;';
-            } else if (m === 'YAPE') {
-                btn.style.cssText = 'background:rgba(108,30,168,0.3); border:1px solid #a855f7; color:#a855f7;';
-            } else {
-                btn.style.cssText = 'background:rgba(201,168,76,0.15); border:1px solid #c9a84c; color:#c9a84c;';
-            }
+            if (m === 'EFECTIVO') btn.style.cssText = 'background:#1a3a27; border:1px solid #2ecc71; color:#2ecc71;';
+            else if (m === 'YAPE') btn.style.cssText = 'background:rgba(108,30,168,0.3); border:1px solid #a855f7; color:#a855f7;';
+            else btn.style.cssText = 'background:rgba(201,168,76,0.15); border:1px solid #c9a84c; color:#c9a84c;';
         } else {
             if (m === 'EFECTIVO') btn.style.cssText = 'background:transparent; border:1px solid rgba(255,255,255,0.1); color:#aaa;';
             else if (m === 'YAPE') btn.style.cssText = 'background:rgba(108,30,168,0.05); border:1px solid rgba(108,30,168,0.2); color:#888;';
@@ -622,17 +529,17 @@ function seleccionarMetodoPago(metodo) {
 
     actualizarDesglosePago();
 }
+
 function mostrarAnticipoYape(sesionData) {
     const anticipoDiv = document.getElementById('anticipoYapeInfo');
     const anticipoTexto = document.getElementById('anticipoYapeTexto');
 
     if (sesionData.anticipoYape && sesionData.anticipoYape > 0) {
-        anticipoDiv.style.display = 'block';
-        anticipoTexto.textContent =
-            `Esta reserva cuenta con un anticipo web de S/ ${Number(sesionData.anticipoYape).toFixed(2)} por Yape` +
-            (sesionData.codigoYape ? ` (Cód: ${sesionData.codigoYape})` : '');
+        if (anticipoDiv) anticipoDiv.style.display = 'block';
+        if (anticipoTexto) {
+            anticipoTexto.textContent = `Esta reserva cuenta con un anticipo web de S/ ${Number(sesionData.anticipoYape).toFixed(2)} por Yape` + (sesionData.codigoYape ? ` (Cód: ${sesionData.codigoYape})` : '');
+        }
 
-        // Auto-seleccionar método según si el abono cubre todo el servicio o requiere saldo mixto
         const totalText = document.getElementById('textoTotalSilla')?.textContent || 'S/ 0';
         const totalAcumulado = parseFloat(totalText.replace('S/ ', '')) || 0;
 
@@ -643,8 +550,8 @@ function mostrarAnticipoYape(sesionData) {
         }
     } else {
         if (anticipoDiv) anticipoDiv.style.display = 'none';
-        // Si no hay anticipo, vuelve al flujo normal limpio por defecto
-        document.getElementById('lblNetoPorCobrar').innerText = parseFloat(document.getElementById('textoTotalSilla')?.textContent.replace('S/ ', '') || 0).toFixed(2);
+        const lblNeto = document.getElementById('lblNetoPorCobrar');
+        if (lblNeto) lblNeto.innerText = parseFloat(document.getElementById('textoTotalSilla')?.textContent.replace('S/ ', '') || 0).toFixed(2);
     }
     actualizarDesglosePago();
 }

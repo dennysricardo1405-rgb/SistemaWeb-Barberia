@@ -463,167 +463,152 @@
 
                     </div>
                 </div>
+
                 <div class="mt-3 p-3 rounded-3 border border-secondary border-opacity-25" style="background:#1a1a1a;">
                     <h6 class="fw-bold text-uppercase small text-warning mb-3">
-                        <i class="fa-solid fa-credit-card me-1"></i> Método de Pago
+                        <i class="fa-solid fa-credit-card me-1"></i> Método de Pago Final en Caja
                     </h6>
 
-                    <!-- Selector de método -->
-                    <div class="mt-3 p-3 rounded-3 border border-secondary border-opacity-25"
-                        style="background:#1a1a1a;">
-                        <h6 class="fw-bold text-uppercase small text-warning mb-3">
-                            <i class="fa-solid fa-credit-card me-1"></i> Método de Pago Final en Caja
-                        </h6>
-
-                        <!-- Selector de método -->
-                        <div class="d-flex gap-2 mb-3">
-                            <button type="button"
-                                class="btn btn-sm fw-bold px-3 rounded-pill flex-fill btn-metodo active"
-                                data-metodo="EFECTIVO" onclick="seleccionarMetodoPago('EFECTIVO')">
-                                <i class="fa-solid fa-money-bill me-1"></i>Efectivo
-                            </button>
-                            <button type="button" class="btn btn-sm fw-bold px-3 rounded-pill flex-fill btn-metodo"
-                                data-metodo="YAPE" onclick="seleccionarMetodoPago('YAPE')"
-                                style="background:rgba(108,30,168,0.15); border:1px solid rgba(108,30,168,0.4); color:#a855f7;">
-                                <i class="fa-solid fa-mobile-screen me-1"></i>Yape
-                            </button>
-                            <button type="button" class="btn btn-sm fw-bold px-3 rounded-pill flex-fill btn-metodo"
-                                data-metodo="MIXTO" onclick="seleccionarMetodoPago('MIXTO')"
-                                style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#aaa;">
-                                <i class="fa-solid fa-shuffle me-1"></i>Mixto
-                            </button>
-                        </div>
-
-                        <!-- Input hidden para el método seleccionado -->
-                        <input type="hidden" id="selectMetodoPago" value="EFECTIVO">
-
-                        <!-- Info del Anticipo Web Arrastrado (CORREGIDO EL STYLE DUPLICADO) -->
-                        <div id="anticipoYapeInfo"
-                            style="display:none; background:rgba(108,30,168,0.12); color:#a855f7; border:1px solid rgba(108,30,168,0.25); border-radius:8px; padding:8px 12px;"
-                            class="small mb-3">
-                            <i class="fa-solid fa-circle-info me-1"></i>
-                            <span id="anticipoYapeTexto"></span>
-                        </div>
-
-                        <!-- Desglose de Caja en Silla -->
-                        <div class="mb-3 p-2 rounded-2" id="panelDesgloseNeto"
-                            style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
-                            <div class="d-flex justify-content-between small text-muted mb-1">
-                                <span>Abono de Reserva Web:</span>
-                                <span>S/ <span id="lblAnticipoWeb">0.00</span></span>
-                            </div>
-                            <div class="d-flex justify-content-between small fw-bold text-white mb-1">
-                                <span>Monto Neto Restante por Pagar:</span>
-                                <span style="color: #2ecc71;">S/ <span id="lblNetoPorCobrar">0.00</span></span>
-                            </div>
-                        </div>
-
-                        <!-- Panel de Desglose de Inputs (Yape / Mixto) -->
-                        <div id="panelYape" style="display:none;">
-                            <div class="mb-2">
-                                <label class="small text-muted mb-1 d-block" id="labelMontoDinamico">Monto a Cancelar
-                                    por Yape (S/)</label>
-                                <input type="number" id="inputMontoYape" step="0.50" min="0"
-                                    class="form-control form-control-sm bg-dark border-secondary text-white"
-                                    placeholder="0.00" oninput="actualizarDesglosePago()">
-                            </div>
-                            <div class="mb-2">
-                                <label class="small text-muted mb-1 d-block">Código operación Yape (opcional)</label>
-                                <input type="text" id="inputCodigoYape" maxlength="20"
-                                    class="form-control form-control-sm bg-dark border-secondary text-white font-monospace"
-                                    placeholder="Ej: 10416701">
-                            </div>
-                        </div>
-
-                        <!-- Label efectivo restante dinámico -->
-                        <div id="labelEfectivoRestante" class="small fw-bold mt-2 p-2 rounded-2"
-                            style="display:none; background:rgba(46,204,113,0.1); color:#2ecc71; border:1px solid rgba(46,204,113,0.2);">
-                        </div>
-                    </div>
-
-                    <div class="modal-footer border-secondary-subtle justify-content-between">
-                        <button type="button" class="btn btn-sm btn-outline-secondary text-white"
-                            data-bs-dismiss="modal">Cerrar Ventana</button>
-                        <button type="button" id="btnLiberarSillaFinal"
-                            class="btn btn-sm btn-danger fw-bold px-4 rounded-pill shadow"
-                            onclick="finalizarAtencion()">
-                            <i class="fa-solid fa-cash-register me-1"></i> Procesar Pago y Liberar Silla
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-sm fw-bold px-3 rounded-pill flex-fill btn-metodo active"
+                            data-metodo="EFECTIVO" onclick="seleccionarMetodoPago('EFECTIVO')">
+                            <i class="fa-solid fa-money-bill me-1"></i>Efectivo
+                        </button>
+                        <button type="button" class="btn btn-sm fw-bold px-3 rounded-pill flex-fill btn-metodo"
+                            data-metodo="YAPE" onclick="seleccionarMetodoPago('YAPE')"
+                            style="background:rgba(108,30,168,0.15); border:1px solid rgba(108,30,168,0.4); color:#a855f7;">
+                            <i class="fa-solid fa-mobile-screen me-1"></i>Yape
+                        </button>
+                        <button type="button" class="btn btn-sm fw-bold px-3 rounded-pill flex-fill btn-metodo"
+                            data-metodo="MIXTO" onclick="seleccionarMetodoPago('MIXTO')"
+                            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#aaa;">
+                            <i class="fa-solid fa-shuffle me-1"></i>Mixto
                         </button>
                     </div>
 
+                    <input type="hidden" id="selectMetodoPago" value="EFECTIVO">
+
+                    <div id="anticipoYapeInfo"
+                        style="display:none; background:rgba(108,30,168,0.12); color:#a855f7; border:1px solid rgba(108,30,168,0.25); border-radius:8px; padding:8px 12px;"
+                        class="small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        <span id="anticipoYapeTexto"></span>
+                    </div>
+
+                    <div class="mb-3 p-2 rounded-2" id="panelDesgloseNeto"
+                        style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
+                        <div class="d-flex justify-content-between small text-muted mb-1">
+                            <span>Abono de Reserva Web:</span>
+                            <span>S/ <span id="lblAnticipoWeb">0.00</span></span>
+                        </div>
+                        <div class="d-flex justify-content-between small fw-bold text-white mb-1">
+                            <span>Monto Neto Restante por Pagar:</span>
+                            <span style="color: #2ecc71;">S/ <span id="lblNetoPorCobrar">0.00</span></span>
+                        </div>
+                    </div>
+
+                    <div id="panelYape" style="display:none;">
+                        <div class="mb-2">
+                            <label class="small text-muted mb-1 d-block">Monto a Cancelar por Yape (S/)</label>
+                            <input type="number" id="inputMontoYape" step="0.50" min="0"
+                                class="form-control form-control-sm bg-dark border-secondary text-white"
+                                placeholder="0.00" oninput="actualizarDesglosePago()">
+                        </div>
+                        <div class="mb-2">
+                            <label class="small text-muted mb-1 d-block">Código operación Yape (opcional)</label>
+                            <input type="text" id="inputCodigoYape" maxlength="20"
+                                class="form-control form-control-sm bg-dark border-secondary text-white font-monospace"
+                                placeholder="Ej: 10416701">
+                        </div>
+                    </div>
+
+                    <div id="labelEfectivoRestante" class="small fw-bold mt-2 p-2 rounded-2"
+                        style="display:none; background:rgba(46,204,113,0.1); color:#2ecc71; border:1px solid rgba(46,204,113,0.2);">
+                    </div>
                 </div>
+
+                <div class="modal-footer border-secondary-subtle justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary text-white"
+                        data-bs-dismiss="modal">Cerrar Ventana</button>
+                    <button type="button" id="btnLiberarSillaFinal"
+                        class="btn btn-sm btn-danger fw-bold px-4 rounded-pill shadow" onclick="finalizarAtencion()">
+                        <i class="fa-solid fa-cash-register me-1"></i> Procesar Pago y Liberar Silla
+                    </button>
+                </div>
+
             </div>
         </div>
+    </div>
 
-        <div class="modal fade" id="modalResumenNota" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 text-white" style="background:#0f0f0f;">
-                    <div class="modal-header border-0 pb-0 px-4 pt-4">
-                        <h5 class="modal-title fw-bold text-success">
-                            <i class="fa-solid fa-circle-check me-2"></i>
-                            Nota de Venta <span id="resumenNotaId"></span>
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                            onclick="window.location.href='/secretario/recepcion'"></button>
-                    </div>
-                    <div class="modal-body px-4">
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <div style="background:#1a1a1a;border-radius:8px;padding:10px">
-                                    <div class="text-muted small">Cliente</div>
-                                    <div class="text-white fw-bold small" id="resumenNotaCliente"></div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div style="background:#1a1a1a;border-radius:8px;padding:10px">
-                                    <div class="text-muted small">Barbero</div>
-                                    <div class="text-white fw-bold small" id="resumenNotaBarbero"></div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div style="background:#1a1a1a;border-radius:8px;padding:10px">
-                                    <div class="text-muted small">Fecha</div>
-                                    <div class="text-white fw-bold small" id="resumenNotaFecha"></div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div style="background:#1a1a1a;border-radius:8px;padding:10px">
-                                    <div class="text-muted small">Total</div>
-                                    <div class="text-success fw-bold" id="resumenNotaTotal"></div>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div style="background:#1a1a1a;border-radius:8px;padding:10px">
-                                    <div class="text-muted small">Pago</div>
-                                    <div class="fw-bold small" id="resumenNotaPago">—</div>
-                                </div>
+    <div class="modal fade" id="modalResumenNota" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 text-white" style="background:#0f0f0f;">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bold text-success">
+                        <i class="fa-solid fa-circle-check me-2"></i>
+                        Nota de Venta <span id="resumenNotaId"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        onclick="window.location.href='/secretario/recepcion'"></button>
+                </div>
+                <div class="modal-body px-4">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div style="background:#1a1a1a;border-radius:8px;padding:10px">
+                                <div class="text-muted small">Cliente</div>
+                                <div class="text-white fw-bold small" id="resumenNotaCliente"></div>
                             </div>
                         </div>
-                        <table class="table table-dark table-sm align-middle mb-0 small">
-                            <thead>
-                                <tr class="text-muted text-uppercase" style="font-size:0.7rem">
-                                    <th>Descripción</th>
-                                    <th class="text-center">Cant.</th>
-                                    <th class="text-end">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody id="resumenNotaDetalles"></tbody>
-                        </table>
+                        <div class="col-6">
+                            <div style="background:#1a1a1a;border-radius:8px;padding:10px">
+                                <div class="text-muted small">Barbero</div>
+                                <div class="text-white fw-bold small" id="resumenNotaBarbero"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div style="background:#1a1a1a;border-radius:8px;padding:10px">
+                                <div class="text-muted small">Fecha</div>
+                                <div class="text-white fw-bold small" id="resumenNotaFecha"></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div style="background:#1a1a1a;border-radius:8px;padding:10px">
+                                <div class="text-muted small">Total</div>
+                                <div class="text-success fw-bold" id="resumenNotaTotal"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div style="background:#1a1a1a;border-radius:8px;padding:10px">
+                                <div class="text-muted small">Pago</div>
+                                <div class="fw-bold small" id="resumenNotaPago">—</div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="modal-footer border-0 px-4 pb-4">
-                        <button type="button" class="btn btn-success fw-bold w-100 rounded-pill"
-                            onclick="window.location.href='/secretario/recepcion'">
-                            <i class="fa-solid fa-check me-2"></i> Listo
-                        </button>
-                    </div>
-
+                    <table class="table table-dark table-sm align-middle mb-0 small">
+                        <thead>
+                            <tr class="text-muted text-uppercase" style="font-size:0.7rem">
+                                <th>Descripción</th>
+                                <th class="text-center">Cant.</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resumenNotaDetalles"></tbody>
+                    </table>
                 </div>
+
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-success fw-bold w-100 rounded-pill"
+                        onclick="window.location.href='/secretario/recepcion'">
+                        <i class="fa-solid fa-check me-2"></i> Listo
+                    </button>
+                </div>
+
             </div>
         </div>
+    </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script th:src="@{/js/recepcion-dinamica.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/recepcion-dinamica.js}"></script>
 </body>
 
 </html>

@@ -13,6 +13,7 @@ function verComprobante(src) {
 function getCsrf() {
     return document.querySelector('meta[name="_csrf"]')?.content || '';
 }
+
 function abrirModalConfirmacion(button) {
     const id = button.getAttribute('data-id');
     const totalServicio = parseFloat(button.getAttribute('data-total')) || 0;
@@ -26,13 +27,11 @@ function abrirModalConfirmacion(button) {
         document.getElementById('txtTotalServicio').innerText = totalServicio.toFixed(2);
     }
     
-    // Cambiado dinámicamente a Código Yape (OCR)
     const txtCodigo = document.getElementById('txtCodigoDetectado');
     if (txtCodigo) txtCodigo.innerText = "Escaneando...";
 
-    // Inicializamos los inputs vacíos/cero para la digitación del Secretario
     document.getElementById('formMontoYape').value = 0;
-    document.getElementById('formMontoEfectivo').value = 0;
+    // Removido formMontoEfectivo ❌
     
     calcularCuadre();
 
@@ -72,17 +71,14 @@ function ejecutarOcrInteligente(imgUrl) {
 // ── Calculadora de Cuadre y Alertas de Seguridad ───────────────────────────
 function calcularCuadre() {
     const txtTotal = document.getElementById('txtTotalServicio');
-    if (!txtTotal) return; // Failsafe por si el elemento no ha cargado en el DOM
+    if (!txtTotal) return;
 
     const total = parseFloat(txtTotal.innerText) || 0;
     let yape = parseFloat(document.getElementById('formMontoYape').value) || 0;
-    let efectivo = parseFloat(document.getElementById('formMontoEfectivo').value) || 0;
 
-    // Validación estricta: Bloquear números negativos manuales en caliente
     if (yape < 0) { yape = 0; document.getElementById('formMontoYape').value = 0; }
-    if (efectivo < 0) { efectivo = 0; document.getElementById('formMontoEfectivo').value = 0; }
 
-    const saldo = total - (yape + efectivo);
+    const saldo = total - yape; // El saldo es simplemente Total menos Yape 💸
     const box = document.getElementById('boxStatusSaldo');
 
     if (box) {
@@ -93,11 +89,11 @@ function calcularCuadre() {
         } else if (saldo < 0) {
             box.style.background = "rgba(231,76,60,0.15)";
             box.style.color = "#e74c3c";
-            box.innerHTML = '<h6>⚠️ ERROR: El monto supera el costo total</h6>';
+            box.innerHTML = '<h6>⚠️ ERROR: El monto supera el costo del servicio</h6>';
         } else {
             box.style.background = "rgba(201,168,76,0.15)";
             box.style.color = "#c9a84c";
-            box.innerHTML = `<h6 class="m-0 font-monospace">Saldo Restante en Caja/Silla: S/ ${saldo.toFixed(2)}</h6>`;
+            box.innerHTML = `<h6 class="m-0 font-monospace">Saldo Restante para cobrar en Silla: S/ ${saldo.toFixed(2)}</h6>`;
         }
     }
 }
@@ -107,42 +103,58 @@ async function enviarConfirmacionHibrida() {
     const id = document.getElementById('modalCitaId').value;
     const total = parseFloat(document.getElementById('txtTotalServicio').innerText) || 0;
     const yape = parseFloat(document.getElementById('formMontoYape').value) || 0;
-    const efectivo = parseFloat(document.getElementById('formMontoEfectivo').value) || 0;
+    const efectivo = 0; 
     const codigo = document.getElementById('txtCodigoDetectado').innerText;
 
-    if (yape < 0 || efectivo < 0) {
-        alert("Los montos no pueden ser negativos.");
+    // Guardrails de validación rápida
+    if (yape < 0) {
+        alert("El monto no puede ser negativo.");
         return;
     }
-    if ((yape + efectivo) > total) {
+    if (yape > total) {
         alert("Error: El monto ingresado no puede superar el costo del servicio.");
         return;
     }
 
-    const saldo = total - (yape + efectivo);
-    const msg = saldo === 0 
-        ? `¿Está seguro de procesar? El servicio quedará marcado como TOTALMENTE CANCELADO.` 
-        : `¿Está seguro de procesar? Quedará un saldo pendiente por cobrar en el local de S/ ${saldo.toFixed(2)}.`;
+    const saldo = total - yape;
     
-    if (!confirm(msg)) return;
+    // 1. Construir el mensaje contextual según el saldo
+    const mensajeTexto = saldo === 0 
+        ? `El servicio quedará marcado como TOTALMENTE PAGADO (Saldo: S/ 0.00).` 
+        : `Quedará un saldo pendiente por cobrar en la barbería de S/ ${saldo.toFixed(2)}.`;
 
-    try {
-        const res = await fetch(`/secretario/citas/${id}/aceptar?montoYape=${yape}&montoEfectivo=${efectivo}&codigoYape=${codigo}`, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': getCsrf() }
-        });
-        
-        if (res.ok) {
-            if (modalPagoInstance) modalPagoInstance.hide();
-            const fila = document.getElementById('fila-' + id);
-            if (fila) fila.remove();
-            mostrarToast('ok', '✅ Registro y cuadre de caja guardado.');
-        } else {
-            mostrarToast('err', 'Error al procesar el abono en el servidor.');
+    // 2. Inyectar el texto en el modal premium
+    document.getElementById('txtMensajeSaldoPremium').innerText = mensajeTexto;
+
+    // 3. Levantar el modal de confirmación premium
+    const modalConfirmInstance = new bootstrap.Modal(document.getElementById('modalConfirmarSaldoPremium'));
+    modalConfirmInstance.show();
+
+    // 4. Asignar la acción de ejecución real al botón "Aceptar" del nuevo modal
+    document.getElementById('btnAceptarSaldoPremium').onclick = async function() {
+        modalConfirmInstance.hide(); // Ocultamos el modal de confirmación
+
+        try {
+            const res = await fetch(`/secretario/citas/${id}/aceptar?montoYape=${yape}&montoEfectivo=${efectivo}&codigoYape=${codigo}`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': getCsrf() }
+            });
+            
+            if (res.ok) {
+                // Ocultamos el modal principal de auditoría
+                if (modalPagoInstance) modalPagoInstance.hide();
+                
+                const fila = document.getElementById('fila-' + id);
+                if (fila) fila.remove();
+                
+                mostrarToast('ok', 'Reserva verificada con éxito.');
+            } else {
+                mostrarToast('err', 'Error al procesar el abono en el servidor.');
+            }
+        } catch (e) {
+            mostrarToast('err', 'Error de conexión.');
         }
-    } catch (e) {
-        mostrarToast('err', 'Error de conexión con el servidor.');
-    }
+    };
 }
 
 // ── Acción para Cancelar/Rechazar Reservas ────────────────────────────────

@@ -169,7 +169,7 @@
     <!-- Toast de feedback -->
     <div id="toastBox"></div>
 
-    <!-- MODAL INTERACTIVO DE CUADRE HÍBRIDO -->
+    <!-- ══ MODAL INTERACTIVO DE AUDITORÍA DE CITAS ══ -->
     <div class="modal fade" id="modalConfirmarPago" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="background:#111; border:1px solid rgba(201,168,76,0.25); color: #f0ece0;">
@@ -202,17 +202,11 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">Monto Extra en Efectivo:</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-dark text-muted border-secondary">S/</span>
-                            <input type="number" id="formMontoEfectivo"
-                                class="form-control bg-dark text-white border-secondary" value="0"
-                                oninput="calcularCuadre()">
-                        </div>
-                    </div>
+                    <!-- El monto extra en efectivo fue eliminado de aquí ❌ -->
+
                     <div class="p-2 rounded text-center mt-3" id="boxStatusSaldo"
-                        style="background: rgba(201,168,76,0.1); color: #c9a84c;">
+                        style="background: rgba(201,168,76,0.1);">
+                        <!-- El JS inyectará el saldo restante aquí -->
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top: 1px solid rgba(201,168,76,0.15);">
@@ -233,6 +227,28 @@
                     <button type="button" class="btn-close btn-close-white float-end mb-2"
                         data-bs-dismiss="modal"></button>
                     <img id="comprobanteGrande" src="" style="max-width:100%; border-radius:10px;" alt="Comprobante">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="modalConfirmarSaldoPremium" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content text-center"
+                style="background:#111; border:1px solid rgba(201,168,76,0.3); border-radius:16px; padding:20px;">
+                <div class="modal-body pb-0">
+                    <i class="fa-solid fa-circle-question fa-3x mb-3" style="color:#c9a84c;"></i>
+                    <h5 class="fw-bold text-white mb-2">¿Confirmar Operación?</h5>
+                    <p id="txtMensajeSaldoPremium" style="color:#f0ece0; font-size:0.9rem; line-height: 1.4;"></p>
+                </div>
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button type="button" class="btn btn-sm btn-outline-secondary text-white rounded-3 px-3"
+                        data-bs-dismiss="modal" style="border: 1px solid rgba(255,255,255,0.15);">
+                        Cancelar
+                    </button>
+                    <button type="button" id="btnAceptarSaldoPremium" class="btn btn-sm fw-bold px-4 rounded-3"
+                        style="background:linear-gradient(135deg,#c9a84c,#9a7a30); color:#0a0a0a; border:none;">
+                        Aceptar
+                    </button>
                 </div>
             </div>
         </div>
