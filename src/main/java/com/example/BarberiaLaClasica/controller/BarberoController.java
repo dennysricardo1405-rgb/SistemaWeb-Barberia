@@ -10,6 +10,7 @@ import com.example.BarberiaLaClasica.service.BarberoService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -199,13 +200,16 @@ public class BarberoController {
                 ? YearMonth.of(anio, mes)
                 : YearMonth.now();
 
+        // ── CALCULAMOS EL RANGO EXACTO DE TIME PARA POSTGRESQL ──
+        LocalDateTime fechaInicio = periodo.atDay(1).atStartOfDay(); // Ej: 2026-06-01T00:00:00
+        LocalDateTime fechaFin = periodo.atEndOfMonth().atTime(23, 59, 59, 999999999); // Ej: 2026-06-30T23:59:59...
+
         List<Barbero> barberos = barberoService.listarTodos();
         Map<Barbero, Map<String, Object>> resumen = new LinkedHashMap<>();
 
         for (Barbero b : barberos) {
-            // ← Ahora usa NotaVenta en vez de Cita
-            List<NotaVenta> notas = notaVentaRepository
-                    .findByBarberoAndPeriodo(b, periodo.getYear(), periodo.getMonthValue());
+            // ✅ Ahora le pasamos el rango de fechas compatible con Railway
+            List<NotaVenta> notas = notaVentaRepository.findByBarberoAndFechaBetween(b, fechaInicio, fechaFin);
 
             double totalGenerado = notas.stream()
                     .mapToDouble(NotaVenta::getTotal)
@@ -214,7 +218,8 @@ public class BarberoController {
             double comision = totalGenerado * 0.50;
 
             Map<String, Object> datos = new LinkedHashMap<>();
-            datos.put("notas", notas);
+            datos.put("notes", notas); // Asegúrate de que coincida con lo que lee sueldos.html: datos['notas']
+            datos.put("notas", notas); 
             datos.put("totalNotas", notas.size());
             datos.put("totalGenerado", totalGenerado);
             datos.put("comision", comision);
