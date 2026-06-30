@@ -47,21 +47,19 @@
                         <span class="resumen-value" th:text="${hora}">—</span>
                     </div>
 
-            <!-- Datos de Yape -->
-            <div class="yape-box">
-    <div class="yape-title"><i class="fa-solid fa-mobile-screen-button me-2"></i>Paga con Yape</div>
-    <div class="yape-sub">Transfiere el <span th:text="${config != null ? config['yape_porcentaje'] : '25'}">25</span>% del monto total, para confirmar tu cita</div>
-    <div class="yape-numero" th:text="${config != null ? config['yape_numero'] : '987 654 321'}">987 654 321</div>
-    <div class="yape-qr">
-        <img th:if="${config != null and config['yape_qr_url'] != null and !#strings.isEmpty(config['yape_qr_url'])}"
-             th:src="${config['yape_qr_url']}"
-             alt="QR de Yape" style="max-width:160px; max-height:160px; object-fit:contain;">
-        <i th:unless="${config != null and config['yape_qr_url'] != null and !#strings.isEmpty(config['yape_qr_url'])}"
-           class="fa-solid fa-qrcode" style="font-size:4rem; color:#6c1ea8;"></i>
-    </div>
-    <div class="yape-nombre" th:text="${config != null ? config['yape_titular'] : 'Barbería La Clásica'}">Barbería La Clásica</div>
-</div>
-</div>
+                    <div class="resumen-row mt-2"
+                        style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px;">
+                        <span class="resumen-label">Monto Final</span>
+                        <div>
+                            <span th:if="${precioFinalServicio < servicio?.precio?.doubleValue()}"
+                                style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.85rem; margin-right: 8px;"
+                                th:text="'S/. ' + ${servicio?.precio}"></span>
+
+                            <span class="resumen-value resumen-total"
+                                th:text="'S/. ' + ${#numbers.formatDecimal(precioFinalServicio, 1, 2)}">S/. 0.00</span>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="yape-box"
                     style="background: linear-gradient(135deg, #6c1ea8 0%, #4a0e7a 100%); border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">

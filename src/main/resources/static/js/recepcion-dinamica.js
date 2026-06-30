@@ -49,7 +49,6 @@ function mostrarToast(tipo, titulo, mensaje) {
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 4500);
 }
 
-// Inyectar animación CSS una sola vez
 if (!document.getElementById('toastAnim')) {
     const style = document.createElement('style');
     style.id = 'toastAnim';
@@ -406,7 +405,6 @@ function mostrarMsg(el, tipo, texto) {
     el.innerHTML = `<i class="fa-solid fa-${tipo === 'error' ? 'circle-xmark' : 'check'} me-1"></i>${texto}`;
 }
 
-// ── FINALIZAR ATENCIÓN ────────────────────────────────────────
 async function finalizarAtencion() {
     const barberoId = document.getElementById('consumoBarberoId').value;
     const metodoPago = document.getElementById('selectMetodoPago')?.value || 'EFECTIVO';
@@ -451,7 +449,6 @@ async function finalizarAtencion() {
     });
 }
 
-// ── MOSTRAR RESUMEN NOTA ──────────────────────────────────────
 function mostrarResumenNota(nota) {
     document.getElementById('resumenNotaId').textContent = '#' + nota.id;
     document.getElementById('resumenNotaFecha').textContent = nota.fecha;

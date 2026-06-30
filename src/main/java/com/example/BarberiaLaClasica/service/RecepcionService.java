@@ -31,10 +31,6 @@ import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.repository.SillaSessionRepository;
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 0cd79e854664d219825bd64c7122626485b80e08
 @Service
 public class RecepcionService {
 
