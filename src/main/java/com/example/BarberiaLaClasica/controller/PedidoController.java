@@ -20,9 +20,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.example.BarberiaLaClasica.model.Producto;
-import com.example.BarberiaLaClasica.repository.ClienteRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.service.PedidoService;
+import com.example.BarberiaLaClasica.service.PromocionHelper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -35,6 +35,8 @@ public class PedidoController {
     private PedidoService pedidoService;
     @Autowired
     private ProductoRepository productoRepository;
+    @Autowired
+    private PromocionHelper promocionHelper;
 
     // ── Página de pago del carrito ────────────────────────
     @GetMapping("/cliente/carrito/pago")
@@ -51,7 +53,6 @@ public class PedidoController {
         return "cliente/carrito-pago";
     }
 
-    // ── Confirmar pedido ──────────────────────────────────
     @PostMapping("/cliente/carrito/confirmar")
     public String confirmarPedido(
             @RequestParam("comprobante") MultipartFile comprobante,
@@ -66,15 +67,37 @@ public class PedidoController {
 
         try {
             ObjectMapper mapper = new ObjectMapper();
-            List<Map<String, Object>> items = mapper.readValue(carritoJson,
+            List<Map<String, Object>> itemsRaw = mapper.readValue(carritoJson,
                     new TypeReference<>() {
                     });
 
-            // Validar que no esté vacío
-            if (items == null || items.isEmpty())
+            // Validar que el carrito no llegue vacío
+            if (itemsRaw == null || itemsRaw.isEmpty())
                 throw new RuntimeException("El carrito está vacío");
 
-            pedidoService.confirmarPedido(principal.getName(), items, comprobante);
+            // ── ENRIQUECER EN CALIENTE ANTES DE GUARDAR EN BASE DE DATOS ──
+            List<Map<String, Object>> itemsConDescuento = new ArrayList<>();
+            for (Map<String, Object> itemRaw : itemsRaw) {
+                Long id = Long.parseLong(itemRaw.get("id").toString());
+                int cantidad = Integer.parseInt(itemRaw.get("cantidad").toString());
+
+                Producto p = productoRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+                // Calculamos el precio real con descuento usando tu helper
+                double precioReal = promocionHelper.calcularPrecioProducto(p);
+
+                Map<String, Object> itemProcesado = new HashMap<>();
+                itemProcesado.put("id", p.getId());
+                itemProcesado.put("cantidad", cantidad);
+                itemProcesado.put("precio", precioReal); // ✅ Enviamos el precio de oferta al servicio
+                itemProcesado.put("subtotal", precioReal * cantidad);
+
+                itemsConDescuento.add(itemProcesado);
+            }
+
+            // Le pasamos la lista ya corregida con los precios de promoción al servicio
+            pedidoService.confirmarPedido(principal.getName(), itemsConDescuento, comprobante);
             session.removeAttribute("carrito");
 
             ra.addFlashAttribute("exito", true);
@@ -82,7 +105,8 @@ public class PedidoController {
 
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());
-            // Recargar items para mostrar la página de pago con error
+            // Recargar los ítems usando el método corregido que ya configuramos con
+            // PromocionHelper
             List<Map<String, Object>> carrito = obtenerCarrito(session);
             recargarItems(carrito, model);
             return "cliente/carrito-pago";
@@ -121,23 +145,28 @@ public class PedidoController {
                 int cantidad = Integer.parseInt(item.get("cantidad").toString());
 
                 Producto p = productoRepository.findById(id)
-                        .orElseThrow(() -> new RuntimeException(
-                                "Producto no encontrado"));
+                        .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
                 if (p.getStock() < cantidad)
                     throw new RuntimeException(
                             "Stock insuficiente para: " + p.getNombre() +
                                     ". Solo hay " + p.getStock() + " disponibles.");
 
+                // ── CÁLCULO DE PROMOCIÓN CON EL HELPER ──
+                double precioConDescuento = promocionHelper.calcularPrecioProducto(p);
+                double subtotalItem = precioConDescuento * cantidad;
+
                 Map<String, Object> e = new HashMap<>();
                 e.put("id", p.getId());
                 e.put("nombre", p.getNombre());
                 e.put("imagen", p.getImagen());
-                e.put("precio", p.getPrecioVenta());
+                e.put("precio", precioConDescuento); // ✅ Precio de oferta real
+                e.put("precioOriginal", p.getPrecioVenta()); // ✅ Enviamos el original para el tachado en JS
                 e.put("cantidad", cantidad);
-                e.put("subtotal", p.getPrecioVenta() * cantidad);
+                e.put("subtotal", subtotalItem);
+
                 enriquecidos.add(e);
-                total += p.getPrecioVenta() * cantidad;
+                total += subtotalItem;
             }
 
             return ResponseEntity.ok(Map.of(
@@ -156,12 +185,15 @@ public class PedidoController {
         for (Map<String, Object> item : carrito) {
             Long id = Long.parseLong(item.get("id").toString());
             productoRepository.findById(id).ifPresent(p -> {
+                double precioConDescuento = promocionHelper.calcularPrecioProducto(p);
+                int cantidad = Integer.parseInt(item.get("cantidad").toString());
+
                 Map<String, Object> e = new HashMap<>(item);
                 e.put("nombre", p.getNombre());
                 e.put("imagen", p.getImagen());
-                e.put("precio", p.getPrecioVenta());
-                e.put("subtotal",
-                        p.getPrecioVenta() * Integer.parseInt(item.get("cantidad").toString()));
+                e.put("precio", precioConDescuento);
+                e.put("precioOriginal", p.getPrecioVenta());
+                e.put("subtotal", precioConDescuento * cantidad);
                 items.add(e);
             });
             if (!items.isEmpty())
@@ -301,5 +333,11 @@ public class PedidoController {
         List<Map<String, Object>> nuevo = new ArrayList<>();
         session.setAttribute("carrito", nuevo);
         return nuevo;
+    }
+
+    @GetMapping("/api/auth/check")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> checkAuth(Principal principal) {
+        return ResponseEntity.ok(Map.of("logueado", principal != null));
     }
 }

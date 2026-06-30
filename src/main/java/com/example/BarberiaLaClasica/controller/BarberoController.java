@@ -189,57 +189,57 @@ public class BarberoController {
         return "redirect:/admin/barberos";
     }
 
-   @GetMapping("/sueldos")
-public String vistasSueldos(
-        @RequestParam(required = false) Integer mes,
-        @RequestParam(required = false) Integer anio,
-        Model model) {
+    @GetMapping("/sueldos")
+    public String vistasSueldos(
+            @RequestParam(required = false) Integer mes,
+            @RequestParam(required = false) Integer anio,
+            Model model) {
 
-    YearMonth periodo = (mes != null && anio != null)
-            ? YearMonth.of(anio, mes)
-            : YearMonth.now();
+        YearMonth periodo = (mes != null && anio != null)
+                ? YearMonth.of(anio, mes)
+                : YearMonth.now();
 
-    List<Barbero> barberos = barberoService.listarTodos();
-    Map<Barbero, Map<String, Object>> resumen = new LinkedHashMap<>();
+        List<Barbero> barberos = barberoService.listarTodos();
+        Map<Barbero, Map<String, Object>> resumen = new LinkedHashMap<>();
 
-    for (Barbero b : barberos) {
-        // ← Ahora usa NotaVenta en vez de Cita
-        List<NotaVenta> notas = notaVentaRepository
-                .findByBarberoAndPeriodo(b, periodo.getYear(), periodo.getMonthValue());
+        for (Barbero b : barberos) {
+            // ← Ahora usa NotaVenta en vez de Cita
+            List<NotaVenta> notas = notaVentaRepository
+                    .findByBarberoAndPeriodo(b, periodo.getYear(), periodo.getMonthValue());
 
-        double totalGenerado = notas.stream()
-                .mapToDouble(NotaVenta::getTotal)
-                .sum();
+            double totalGenerado = notas.stream()
+                    .mapToDouble(NotaVenta::getTotal)
+                    .sum();
 
-        double comision = totalGenerado * 0.50;
+            double comision = totalGenerado * 0.50;
 
-        Map<String, Object> datos = new LinkedHashMap<>();
-        datos.put("notas",         notas);
-        datos.put("totalNotas",    notas.size());
-        datos.put("totalGenerado", totalGenerado);
-        datos.put("comision",      comision);
+            Map<String, Object> datos = new LinkedHashMap<>();
+            datos.put("notas", notas);
+            datos.put("totalNotas", notas.size());
+            datos.put("totalGenerado", totalGenerado);
+            datos.put("comision", comision);
 
-        resumen.put(b, datos);
+            resumen.put(b, datos);
+        }
+
+        List<YearMonth> mesesDisponibles = new ArrayList<>();
+        for (int i = 0; i < 12; i++)
+            mesesDisponibles.add(YearMonth.now().minusMonths(i));
+
+        double totalGeneralPeriodo = resumen.values().stream()
+                .mapToDouble(d -> (double) d.get("totalGenerado")).sum();
+        double totalComisionesPeriodo = resumen.values().stream()
+                .mapToDouble(d -> (double) d.get("comision")).sum();
+        int totalAtencionesPeriodo = resumen.values().stream()
+                .mapToInt(d -> (int) d.get("totalNotas")).sum();
+
+        model.addAttribute("resumen", resumen);
+        model.addAttribute("periodo", periodo);
+        model.addAttribute("mesesDisponibles", mesesDisponibles);
+        model.addAttribute("totalGeneralPeriodo", totalGeneralPeriodo);
+        model.addAttribute("totalComisionesPeriodo", totalComisionesPeriodo);
+        model.addAttribute("totalCitasPeriodo", totalAtencionesPeriodo);
+
+        return "barberos/sueldos";
     }
-
-    List<YearMonth> mesesDisponibles = new ArrayList<>();
-    for (int i = 0; i < 12; i++)
-        mesesDisponibles.add(YearMonth.now().minusMonths(i));
-
-    double totalGeneralPeriodo   = resumen.values().stream()
-            .mapToDouble(d -> (double) d.get("totalGenerado")).sum();
-    double totalComisionesPeriodo = resumen.values().stream()
-            .mapToDouble(d -> (double) d.get("comision")).sum();
-    int totalAtencionesPeriodo   = resumen.values().stream()
-            .mapToInt(d -> (int) d.get("totalNotas")).sum();
-
-    model.addAttribute("resumen",                resumen);
-    model.addAttribute("periodo",                periodo);
-    model.addAttribute("mesesDisponibles",       mesesDisponibles);
-    model.addAttribute("totalGeneralPeriodo",    totalGeneralPeriodo);
-    model.addAttribute("totalComisionesPeriodo", totalComisionesPeriodo);
-    model.addAttribute("totalCitasPeriodo",      totalAtencionesPeriodo);
-
-    return "barberos/sueldos";
-}
 }

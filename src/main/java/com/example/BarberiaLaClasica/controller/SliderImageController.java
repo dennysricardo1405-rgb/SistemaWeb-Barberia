@@ -107,49 +107,4 @@ public class SliderImageController {
     return "redirect:/admin/slider";
 }
 
-    // ════════════════════════════════════════════════
-    // PROMOCIONES — guardar, toggle, eliminar
-    // ════════════════════════════════════════════════
-    @PostMapping("/promociones/guardar")
-    public String guardarPromo(
-            @RequestParam("file")                                         MultipartFile file,
-            @RequestParam("titulo")                                       String titulo,
-            @RequestParam(value = "descripcion", defaultValue = "")      String descripcion,
-            @RequestParam(value = "badge",       defaultValue = "NUEVO") String badge,
-            @RequestParam(value = "orden",       defaultValue = "1")     Integer orden,
-            @RequestParam(value = "fechaInicio", required = false)
-                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)           LocalDate fechaInicio,
-            @RequestParam(value = "fechaFin",    required = false)
-                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)           LocalDate fechaFin,
-            RedirectAttributes ra) {
-        try {
-            promoService.guardar(file, titulo, descripcion, badge, orden, fechaInicio, fechaFin);
-            ra.addFlashAttribute("success", "Promoción guardada correctamente.");
-        } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error al guardar: " + e.getMessage());
-        }
-        return "redirect:/admin/slider";
-    }
-
-    @PostMapping("/promociones/toggle/{id}")
-    public String togglePromo(@PathVariable Long id, RedirectAttributes ra) {
-        try {
-            promoService.toggleActivo(id);
-            ra.addFlashAttribute("success", "Estado de promoción actualizado.");
-        } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error: " + e.getMessage());
-        }
-        return "redirect:/admin/slider";
-    }
-
-    @PostMapping("/promociones/eliminar/{id}")
-    public String eliminarPromo(@PathVariable Long id, RedirectAttributes ra) {
-        try {
-            promoService.eliminar(id);
-            ra.addFlashAttribute("success", "Promoción eliminada correctamente.");
-        } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error al eliminar: " + e.getMessage());
-        }
-        return "redirect:/admin/slider";
-    }
 }

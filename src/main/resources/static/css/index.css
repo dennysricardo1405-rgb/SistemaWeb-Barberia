@@ -1408,9 +1408,168 @@ body {
     color: rgba(201, 168, 76, 0.3);
 }
 
-@media (max-width: 480px) {
-    .carrito-drawer {
-        width: 100%;
-        right: -100%;
+.icon-gold {
+    color: var(--gold, #c9a84c);
+}
+
+.badge-carrito-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--gold, #c9a84c);
+    color: #000;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* El botón hamburguesa se mantiene oculto en PC */
+.nb-hamburger {
+    display: none;
+    background: transparent;
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    color: var(--gold, #c9a84c);
+    font-size: 1.2rem;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nb-hamburger:hover {
+    background: rgba(201, 168, 76, 0.1);
+}
+
+.nb-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* LÓGICA DE MEDIA QUERY PARA PANTALLAS MÓVILES */
+@media (max-width: 991px) {
+    .nb {
+        padding: 0 20px;
+        height: 65px;
     }
+
+    .nb-logo-text {
+        font-size: 1.25rem;
+        /* Ajusta el logo para que entre siempre en 1 sola línea */
+        white-space: nowrap;
+    }
+
+    .nb-logo img {
+        height: 42px;
+    }
+
+    /* Mostramos el botón hamburguesa */
+    .nb-hamburger {
+        display: block;
+    }
+
+    /* El contenedor de acciones se transforma en un menú desplegable elegante */
+    .nb-actions {
+        position: fixed;
+        top: 65px;
+        left: 0;
+        right: 0;
+        background: rgba(15, 15, 15, 0.98);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+        flex-direction: column;
+        padding: 24px;
+        gap: 16px;
+        display: none;
+        /* Oculto por defecto */
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+        max-height: calc(100vh - 65px);
+        overflow-y: auto;
+    }
+
+    /* Clase que inyectará JavaScript para abrir el menú */
+    .nb-actions.show-menu {
+        display: flex !important;
+    }
+
+    .nb-socials {
+        display: none;
+        /* Quitamos redes del menú móvil para ahorrar espacio */
+    }
+
+    .nb-nav-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+    }
+
+    /* Convertimos los botones a ancho completo en celulares */
+    .nb-actions .btn-nb-gold,
+    .nb-actions .btn-nb-outline,
+    .nb-actions .dropdown,
+    .nb-actions .dropdown-toggle {
+        width: 100% !important;
+        justify-content: center;
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+
+    .nb-dropdown .dropdown-menu {
+        position: static !important;
+        width: 100%;
+        background: #161616;
+        transform: none !important;
+        box-shadow: none;
+        margin-top: 8px;
+    }
+}
+
+.card-producto-premium {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Badge Dorado Flotante de Descuento */
+.badge-promo-flotante {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: linear-gradient(135deg, #c9a84c, #a88934);
+    color: #0d0d0d;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 5px 12px;
+    border-radius: 50px;
+    z-index: 5;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+}
+
+/* Tag de Vigencia con Reloj */
+.promo-vigencia-tag {
+    font-size: 0.72rem;
+    color: #ffc107;
+    background: rgba(255, 193, 7, 0.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 193, 7, 0.15);
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+}
+
+/* Ajuste del precio tachado */
+.precio-original-text {
+    font-size: 0.8rem;
+    opacity: 0.4;
+    line-height: 1;
 }
