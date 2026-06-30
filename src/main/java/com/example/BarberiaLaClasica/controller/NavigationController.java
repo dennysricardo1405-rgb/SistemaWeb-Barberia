@@ -10,22 +10,28 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.model.Perfil;
 import com.example.BarberiaLaClasica.model.Producto;
 import com.example.BarberiaLaClasica.model.Usuario;
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
 import com.example.BarberiaLaClasica.repository.CategoriaRepository;
+import com.example.BarberiaLaClasica.repository.CitaRepository;
 import com.example.BarberiaLaClasica.repository.ClienteRepository;
+import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
 import com.example.BarberiaLaClasica.repository.PerfilRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.service.BarberoService;
+import com.example.BarberiaLaClasica.service.CitaService;
 import com.example.BarberiaLaClasica.service.ConfiguracionSitioService;
 import com.example.BarberiaLaClasica.service.PerfilService;
 import com.example.BarberiaLaClasica.service.PromocionService;
 import com.example.BarberiaLaClasica.service.SliderImageService;
 import com.example.BarberiaLaClasica.service.UsuarioService;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +51,9 @@ public class NavigationController {
     @Autowired private SliderImageService sliderImageService;
     @Autowired private PromocionService promocionService;
     @Autowired private ConfiguracionSitioService configuracionSitioService;
+    @Autowired private CitaRepository citaRepository;
+    @Autowired private CitaService citaService;
+    @Autowired private NotaVentaRepository notaVentaRepository;
 
     @GetMapping("/")
     public String index(Model model) {
@@ -60,18 +69,53 @@ public class NavigationController {
         return "index";
     }
 
-    // ── Dashboard Admin ──────────────────────────────────────
     @GetMapping("/admin/dashboard")
-    public String dashboard(Model model, Authentication authentication) {
-        model.addAttribute("usuarioNombre", authentication.getName());
-        long totalBarberos = barberoRepository.count();
-        long totalClientes = clienteRepository.count();
-        model.addAttribute("totalBarberos", totalBarberos);
-        model.addAttribute("totalClientes", totalClientes);
-        model.addAttribute("citasHoy", 0);
-        model.addAttribute("ingresosMes", "0.00");
-        return "admin-dashboard";
+public String dashboard(Model model, Authentication authentication) {
+    model.addAttribute("usuarioNombre", authentication.getName());
+    model.addAttribute("totalBarberos", barberoRepository.count());
+    model.addAttribute("totalClientes", clienteRepository.count());
+
+    List<Cita> citasDeHoy = citaRepository.findByFechaOrderByHoraInicioAsc(LocalDate.now());
+    model.addAttribute("citasHoy", citasDeHoy.size());
+    model.addAttribute("citasDelDia", citasDeHoy);
+
+    model.addAttribute("barberoStats",       java.util.Collections.emptyList());
+    model.addAttribute("serviciosPopulares", java.util.Collections.emptyList());
+
+    // ── Ingresos de los últimos 7 días (diario) ──
+    List<String> ingresosLabels = new ArrayList<>();
+    List<Double> ingresosValores = new ArrayList<>();
+
+    java.time.format.DateTimeFormatter fmtEtiqueta =
+            java.time.format.DateTimeFormatter.ofPattern("dd MMM", new java.util.Locale("es", "ES"));
+
+    LocalDate hoy = LocalDate.now();
+    double ingresosMesTotal = 0.00;
+
+    for (int i = 6; i >= 0; i--) {
+        LocalDate dia = hoy.minusDays(i);
+        LocalDateTime inicioDia = dia.atStartOfDay();
+        LocalDateTime finDia = dia.plusDays(1).atStartOfDay();
+
+        Double total = notaVentaRepository.sumTotalEntreFechas(inicioDia, finDia);
+        if (total == null) total = 0.00;
+
+        ingresosLabels.add(dia.equals(hoy) ? "Hoy" : fmtEtiqueta.format(dia));
+        ingresosValores.add(total);
     }
+
+    // ── Ingresos del mes en curso (para el KPI de arriba) ──
+    LocalDate inicioMes = hoy.withDayOfMonth(1);
+    Double ingresosMes = notaVentaRepository.sumTotalEntreFechas(
+            inicioMes.atStartOfDay(), hoy.plusDays(1).atStartOfDay());
+    model.addAttribute("ingresosMes", ingresosMes != null ? ingresosMes : 0.00);
+
+    model.addAttribute("ingresosLabels", ingresosLabels);
+    model.addAttribute("ingresosValores", ingresosValores);
+
+    return "admin-dashboard";
+}
+
 
     // ── Usuarios ─────────────────────────────────────────────
    @GetMapping("/admin/usuarios")

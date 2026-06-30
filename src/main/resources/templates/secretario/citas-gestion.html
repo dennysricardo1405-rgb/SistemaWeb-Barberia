@@ -228,7 +228,7 @@
         async function accionCita(id, accion) {
             const esAceptar = accion === 'aceptar';
             const msg = esAceptar
-                ? '¿Confirmar esta cita?\n\nSe enviará un mensaje de WhatsApp al cliente.'
+                ? '¿Confirmar esta cita?\n\nSe enviará un correo al cliente.'
                 : '¿Cancelar esta cita?';
             if (!confirm(msg)) return;
 
