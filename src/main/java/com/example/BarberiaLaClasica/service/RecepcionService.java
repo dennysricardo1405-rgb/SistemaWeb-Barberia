@@ -72,12 +72,14 @@ public class RecepcionService {
     // ── Listar todas las notas (mantener compatibilidad) ─────────────────────
     public List<NotaVenta> listarNotas() {
         Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by("fecha").descending());
-        return notaVentaRepository.findAllByOrderByFechaDesc(pageable).getContent();
+        // ✅ Cambiado a .findAll(pageable)
+        return notaVentaRepository.findAll(pageable).getContent();
     }
 
-    // ── NUEVO: Listar notas con paginación ───────────────────────────────────
+    // ── NUEVO: Listar notas con paginación ────────────────────────────────
     public Page<NotaVenta> listarNotasPaginadas(Pageable pageable) {
-        return notaVentaRepository.findAllByOrderByFechaDesc(pageable);
+        // ✅ Cambiado a .findAll(pageable)
+        return notaVentaRepository.findAll(pageable);
     }
 
     // ── Reservas Web para Hoy con Paginación (CORREGIDO) ─────────────────────
