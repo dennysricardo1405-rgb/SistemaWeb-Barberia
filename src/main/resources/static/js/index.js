@@ -310,3 +310,33 @@ function filtrarSubcategoria(nombre, event) {
     });
     if (event?.target) event.target.classList.add('active');
 }
+
+function toggleMobileMenu() {
+    const actionsMenu = document.getElementById('navbarActions');
+    const hamburgerIcon = document.getElementById('hamburgerBtn').querySelector('i');
+
+    // Alterna la clase para mostrar/ocultar el menú
+    actionsMenu.classList.toggle('show-menu');
+
+    // Cambia el ícono estéticamente de barras (☰) a una equis (✕) al abrirse
+    if (actionsMenu.classList.contains('show-menu')) {
+        hamburgerIcon.classList.remove('fa-bars');
+        hamburgerIcon.classList.add('fa-xmark');
+    } else {
+        hamburgerIcon.classList.remove('fa-xmark');
+        hamburgerIcon.classList.add('fa-bars');
+    }
+}
+
+// Cierra el menú automáticamente si el usuario cambia el tamaño de la ventana
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 991) {
+        const actionsMenu = document.getElementById('navbarActions');
+        const hamburgerIcon = document.getElementById('hamburgerBtn').querySelector('i');
+        actionsMenu.classList.remove('show-menu');
+        if (hamburgerIcon) {
+            hamburgerIcon.classList.remove('fa-xmark');
+            hamburgerIcon.classList.add('fa-bars');
+        }
+    }
+});

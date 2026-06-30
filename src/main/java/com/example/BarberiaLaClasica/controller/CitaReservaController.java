@@ -1,6 +1,7 @@
 package com.example.BarberiaLaClasica.controller;
 
 import com.example.BarberiaLaClasica.service.CitaService;
+import com.example.BarberiaLaClasica.service.PromocionHelper;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
@@ -33,6 +34,8 @@ public class CitaReservaController {
     private CitaRepository citaRepository;
     @Autowired
     private ClienteRepository clienteRepository;
+    @Autowired
+    private PromocionHelper promocionHelper;
     // ─────────────────────────────────────────────────────────────────
     // PASO 1-3: Asistente público (sin login requerido)
     // ─────────────────────────────────────────────────────────────────
@@ -41,6 +44,8 @@ public class CitaReservaController {
     public String verAsistenteReserva(Model model) {
         model.addAttribute("servicios", servicioRepository.findByEstado(1));
         model.addAttribute("barberos", barberoRepository.findByEstado(1));
+        model.addAttribute("promoHelper", promocionHelper);
+
         return "reserva/reservar-pasos";
     }
 
@@ -133,8 +138,17 @@ public class CitaReservaController {
             }
         });
 
-        servicioRepository.findById(servicioId).ifPresent(s -> model.addAttribute("servicio", s));
+        // ── CÁLCULO DE PROMOCIONES VINCULADAS ───────────────────────────
+        servicioRepository.findById(servicioId).ifPresent(s -> {
+            model.addAttribute("servicio", s);
+
+            // Calculamos el precio real considerando si tiene una oferta activa
+            double precioFinal = promocionHelper.calcularPrecioServicio(s);
+            model.addAttribute("precioFinalServicio", precioFinal); // ◄ ¡Esto soluciona el Error 500!
+        });
+
         barberoRepository.findById(barberoId).ifPresent(b -> model.addAttribute("barbero", b));
+
         model.addAttribute("fecha", session.getAttribute("preCita_fecha"));
         model.addAttribute("hora", session.getAttribute("preCita_hora"));
         model.addAttribute("servicioId", servicioId);

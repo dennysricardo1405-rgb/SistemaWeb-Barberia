@@ -83,7 +83,8 @@
                 th:classappend="${activePage == 'compras_proveedor' ? ' active' : ''}">
                 <i class="fa-solid fa-truck-ramp-box"></i> Entrada de Stock
             </a>
-            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/barberos/sueldos" class="nav-link" th:classappend="${activePage == 'sueldos' ? ' active' : ''}">
+            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/barberos/sueldos"
+                class="nav-link" th:classappend="${activePage == 'sueldos' ? ' active' : ''}">
                 <i class="fa-solid fa-sack-dollar"></i> Sueldos
             </a>
             <!-- REPORTES -->
@@ -97,7 +98,11 @@
                 th:classappend="${activePage == 'slider' ? ' active' : ''}">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> Gestión del Sitio
             </a>
-
+            <!-- PROMOCIONES -->
+            <a th:if="${#authorization.expression('hasRole(''ADMINISTRADOR'')')}" href="/admin/promociones"
+                class="nav-link" th:classappend="${activePage == 'promociones' ? ' active' : ''}">
+                <i class="fa-solid fa-tag"></i> Promociones
+            </a>
             <!-- RECEPCIÓN SILLAS -->
             <a th:href="@{/secretario/recepcion}" sec:authorize="hasRole('SECRETARIO')" class="nav-link"
                 th:classappend="${activePage == 'recepcion'} ? ' active' : ''">

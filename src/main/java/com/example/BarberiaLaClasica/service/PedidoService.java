@@ -46,7 +46,7 @@ public class PedidoService {
     @Value("${app.upload.dir:uploads/comprobantes}")
     private String uploadDir;
 
-    // ── Guardar pedido con comprobante ────────────────────
+    // ── Guardar pedido con c
     @Transactional
     public PedidoOnline confirmarPedido(
             String correoCliente,
@@ -82,22 +82,32 @@ public class PedidoService {
             if (producto.getStock() < cantidad)
                 throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
 
+            // ── 🌟 EXTRACTOR CLAVE DEL PRECIO PROMOCIONAL ──
+            // Si el controlador nos calculó el precio promocional, lo usamos.
+            // Si por seguridad no existiera, recurre al precio base por defecto.
+            double precioAplicado = producto.getPrecioVenta();
+            if (item.containsKey("precio")) {
+                precioAplicado = Double.parseDouble(item.get("precio").toString());
+            }
+
+            double subtotalCalculado = cantidad * precioAplicado;
+
             DetallePedido detalle = new DetallePedido();
             detalle.setPedido(pedido);
             detalle.setProducto(producto);
             detalle.setCantidad(cantidad);
-            detalle.setPrecioUnitario(producto.getPrecioVenta());
-            detalle.setSubtotal(cantidad * producto.getPrecioVenta());
+            detalle.setPrecioUnitario(precioAplicado);     // ✅ Almacena S/ 18.00 reales en la tabla
+            detalle.setSubtotal(subtotalCalculado);       // ✅ Subtotal S/ 18.00
             detalles.add(detalle);
 
-            total += detalle.getSubtotal();
+            total += subtotalCalculado;
 
             // Descontar stock
             producto.setStock(producto.getStock() - cantidad);
             productoRepository.save(producto);
         }
 
-        pedido.setTotal(total);
+        pedido.setTotal(total); // ✅ Registra la sumatoria del descuento total final
         pedido.setDetalles(detalles);
         pedidoRepository.save(pedido);
 
@@ -147,73 +157,87 @@ public class PedidoService {
     // ── Correo ────────────────────────────────────────────
     private void enviarCorreo(PedidoOnline pedido, boolean aceptado) {
         try {
-            if (pedido.getCliente() == null || pedido.getCliente().getCorreo() == null)
-                return;
+            // ── PARCHE DE PRUEBAS PARA RAILWAY ──
+            // Interrumpimos el flujo de inmediato para evitar que Railway se cuelgue al
+            // enviar el correo
+            System.out.println("Envío de correo de pedido #" + pedido.getId()
+                    + " omitido para: " + pedido.getCliente().getCorreo());
+            return;
 
-            String asunto = aceptado
-                    ? "Tu pedido fue aceptado — Ya puedes venir a recogerlo"
-                    : "Tu pedido fue rechazado — Barbería La Clásica";
-
-            StringBuilder items = new StringBuilder();
-            for (DetallePedido d : pedido.getDetalles()) {
-                items.append(String.format(
-                        "<tr><td style='padding:8px;color:#aaa'>%s</td>" +
-                                "<td style='padding:8px;text-align:center'>%d</td>" +
-                                "<td style='padding:8px;text-align:right;color:#c9a84c'>S/ %.2f</td></tr>",
-                        d.getProducto().getNombre(), d.getCantidad(), d.getSubtotal()));
-            }
-
-            String cuerpo = """
-                    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;
-                                background:#111;color:#f0ece0;border-radius:12px;overflow:hidden;">
-                        <div style="background:%s;padding:24px;text-align:center;">
-                            <h2 style="margin:0;color:%s;">Barbería La Clásica</h2>
-                            <p style="margin:4px 0 0;color:%s;font-size:0.9rem;">%s</p>
-                        </div>
-                        <div style="padding:28px;">
-                            <p>Hola <strong>%s</strong>, tu pedido #%d ha sido
-                               <strong style="color:%s;">%s</strong></p>
-                            <table style="width:100%%;border-collapse:collapse;margin-top:16px;">
-                                <thead>
-                                    <tr style="background:#1a1a1a;">
-                                        <th style="padding:8px;text-align:left;color:#aaa;">Producto</th>
-                                        <th style="padding:8px;text-align:center;color:#aaa;">Cant.</th>
-                                        <th style="padding:8px;text-align:right;color:#aaa;">Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>%s</tbody>
-                            </table>
-                            <div style="margin-top:16px;text-align:right;font-size:1.1rem;font-weight:bold;">
-                                Total: <span style="color:#c9a84c;">S/ %.2f</span>
-                            </div>
-                            %s
-                        </div>
-                    </div>
-                    """.formatted(
-                    aceptado ? "#c9a84c" : "#e74c3c",
-                    aceptado ? "#0a0a0a" : "#fff",
-                    aceptado ? "#0a0a0a" : "#fff",
-                    aceptado ? "Pedido Aceptado ✅" : "Pedido Rechazado ❌",
-                    pedido.getCliente().getNombres(), pedido.getId(),
-                    aceptado ? "#c9a84c" : "#e74c3c",
-                    aceptado ? "ACEPTADO 🎉" : "RECHAZADO",
-                    items.toString(),
-                    pedido.getTotal(),
-                    aceptado
-                            ? "<p style='margin-top:20px;color:#aaa;font-size:0.85rem;'>" +
-                                    "Ya puedes venir a recoger tu pedido a la barbería. " +
-                                    "¡Te esperamos!</p>"
-                            : "<p style='margin-top:20px;color:#aaa;font-size:0.85rem;'>" +
-                                    "Lo sentimos, tu pedido no pudo ser procesado. " +
-                                    "Contáctanos para más información.</p>");
-
-            MimeMessage mensaje = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
-            helper.setFrom(mailFrom);
-            helper.setTo(pedido.getCliente().getCorreo());
-            helper.setSubject(asunto);
-            helper.setText(cuerpo, true);
-            mailSender.send(mensaje);
+            /*
+             * * El código original se queda desactivado y comentado aquí abajo.
+             * Cuando configures tu servicio de correos real en el futuro, solo borras este
+             * bloque de comentarios.
+             *
+             * if (pedido.getCliente() == null || pedido.getCliente().getCorreo() == null)
+             * return;
+             * 
+             * String asunto = aceptado
+             * ? "Tu pedido fue aceptado — Ya puedes venir a recogerlo"
+             * : "Tu pedido fue rechazado — Barbería La Clásica";
+             * 
+             * StringBuilder items = new StringBuilder();
+             * for (DetallePedido d : pedido.getDetalles()) {
+             * items.append(String.format(
+             * "<tr><td style='padding:8px;color:#aaa'>%s</td>" +
+             * "<td style='padding:8px;text-align:center'>%d</td>" +
+             * "<td style='padding:8px;text-align:right;color:#c9a84c'>S/ %.2f</td></tr>",
+             * d.getProducto().getNombre(), d.getCantidad(), d.getSubtotal()));
+             * }
+             * 
+             * String cuerpo = """
+             * <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;
+             * background:#111;color:#f0ece0;border-radius:12px;overflow:hidden;">
+             * <div style="background:%s;padding:24px;text-align:center;">
+             * <h2 style="margin:0;color:%s;">Barbería La Clásica</h2>
+             * <p style="margin:4px 0 0;color:%s;font-size:0.9rem;">%s</p>
+             * </div>
+             * <div style="padding:28px;">
+             * <p>Hola <strong>%s</strong>, tu pedido #%d ha sido
+             * <strong style="color:%s;">%s</strong></p>
+             * <table style="width:100%%;border-collapse:collapse;margin-top:16px;">
+             * <thead>
+             * <tr style="background:#1a1a1a;">
+             * <th style="padding:8px;text-align:left;color:#aaa;">Producto</th>
+             * <th style="padding:8px;text-align:center;color:#aaa;">Cant.</th>
+             * <th style="padding:8px;text-align:right;color:#aaa;">Subtotal</th>
+             * </tr>
+             * </thead>
+             * <tbody>%s</tbody>
+             * </table>
+             * <div
+             * style="margin-top:16px;text-align:right;font-size:1.1rem;font-weight:bold;">
+             * Total: <span style="color:#c9a84c;">S/ %.2f</span>
+             * </div>
+             * %s
+             * </div>
+             * </div>
+             * """.formatted(
+             * aceptado ? "#c9a84c" : "#e74c3c",
+             * aceptado ? "#0a0a0a" : "#fff",
+             * aceptado ? "#0a0a0a" : "#fff",
+             * aceptado ? "Pedido Aceptado ✅" : "Pedido"> Pedido Rechazado ❌",
+             * pedido.getCliente().getNombres(), pedido.getId(),
+             * aceptado ? "#c9a84c" : "#e74c3c",
+             * aceptado ? "ACEPTADO 🎉" : "RECHAZADO",
+             * items.toString(),
+             * pedido.getTotal(),
+             * aceptado
+             * ? "<p style='margin-top:20px;color:#aaa;font-size:0.85rem;'>" +
+             * "Ya puedes venir a recoger tu pedido a la barbería. " +
+             * "¡Te esperamos!</p>"
+             * : "<p style='margin-top:20px;color:#aaa;font-size:0.85rem;'>" +
+             * "Lo sentimos, tu pedido no pudo ser procesado. " +
+             * "Contáctanos para más información.</p>");
+             * 
+             * MimeMessage mensaje = mailSender.createMimeMessage();
+             * MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+             * helper.setFrom(mailFrom);
+             * helper.setTo(pedido.getCliente().getCorreo());
+             * helper.setSubject(asunto);
+             * helper.setText(cuerpo, true);
+             * mailSender.send(mensaje);
+             */
 
         } catch (Exception e) {
             System.err.println("Error enviando correo pedido: " + e.getMessage());

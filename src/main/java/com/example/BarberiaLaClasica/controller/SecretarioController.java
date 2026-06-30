@@ -4,6 +4,7 @@ import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.model.Cliente;
 import com.example.BarberiaLaClasica.service.CitaService;
 import com.example.BarberiaLaClasica.service.ClienteService;
+import com.example.BarberiaLaClasica.service.PromocionHelper;
 import com.example.BarberiaLaClasica.service.RecepcionService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,8 @@ public class SecretarioController {
     private ClienteService clienteService;
     @Autowired
     private RecepcionService recepcionService;
+    @Autowired
+    private PromocionHelper promocionHelper;
 
     // 1. DASHBOARD DEL SECRETARIO (Vista Principal con la Agenda de Citas)
     @GetMapping("/dashboard")
@@ -85,6 +88,7 @@ public class SecretarioController {
     public String gestionCitas(Model model) {
         model.addAttribute("citasPendientes", citaService.listarPendientes());
         model.addAttribute("citasHoy", citaService.listarCitasDeHoy());
+        model.addAttribute("promoHelper", promocionHelper);
         return "secretario/citas-gestion";
     }
 

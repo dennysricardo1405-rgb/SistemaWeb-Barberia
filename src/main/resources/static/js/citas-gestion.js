@@ -30,8 +30,7 @@ function abrirModalConfirmacion(button) {
     const txtCodigo = document.getElementById('txtCodigoDetectado');
     if (txtCodigo) txtCodigo.innerText = "Escaneando...";
 
-    document.getElementById('formMontoYape').value = 0;
-    // Removido formMontoEfectivo ❌
+    document.getElementById('formMontoYape').value = ""; 
     
     calcularCuadre();
 
@@ -44,28 +43,27 @@ function abrirModalConfirmacion(button) {
         if (txtCodigo) txtCodigo.innerText = "NO_DETECTADO";
     }
 }
-
 function ejecutarOcrInteligente(imgUrl) {
     if (typeof Tesseract === 'undefined') return;
 
     Tesseract.recognize(imgUrl, 'eng')
-    .then(({ data: { text } }) => {
-        // Extrae el código de 8 dígitos continuo de Yape
-        const matchCodigo = text.match(/\b\d{8}\b/);
-        let codigoDetectado = matchCodigo ? matchCodigo[0] : "NO_DETECTADO";
+        .then(({ data: { text } }) => {
+            // Extrae el código de 8 dígitos continuo de Yape
+            const matchCodigo = text.match(/\b\d{8}\b/);
+            let codigoDetectado = matchCodigo ? matchCodigo[0] : "NO_DETECTADO";
 
-        if (codigoDetectado === "NO_DETECTADO") {
-            const matchFlex = text.match(/(?:operación|nro\.?|nro)\s*:?\s*(\d+)/i);
-            if (matchFlex && matchFlex[1]) codigoDetectado = matchFlex[1];
-        }
+            if (codigoDetectado === "NO_DETECTADO") {
+                const matchFlex = text.match(/(?:operación|nro\.?|nro)\s*:?\s*(\d+)/i);
+                if (matchFlex && matchFlex[1]) codigoDetectado = matchFlex[1];
+            }
 
-        const txtCodigo = document.getElementById('txtCodigoDetectado');
-        if (txtCodigo) txtCodigo.innerText = codigoDetectado;
-    })
-    .catch(() => {
-        const txtCodigo = document.getElementById('txtCodigoDetectado');
-        if (txtCodigo) txtCodigo.innerText = "NO_DETECTADO";
-    });
+            const txtCodigo = document.getElementById('txtCodigoDetectado');
+            if (txtCodigo) txtCodigo.innerText = codigoDetectado;
+        })
+        .catch(() => {
+            const txtCodigo = document.getElementById('txtCodigoDetectado');
+            if (txtCodigo) txtCodigo.innerText = "NO_DETECTADO";
+        });
 }
 
 // ── Calculadora de Cuadre y Alertas de Seguridad ───────────────────────────
@@ -103,7 +101,7 @@ async function enviarConfirmacionHibrida() {
     const id = document.getElementById('modalCitaId').value;
     const total = parseFloat(document.getElementById('txtTotalServicio').innerText) || 0;
     const yape = parseFloat(document.getElementById('formMontoYape').value) || 0;
-    const efectivo = 0; 
+    const efectivo = 0;
     const codigo = document.getElementById('txtCodigoDetectado').innerText;
 
     // Guardrails de validación rápida
@@ -117,10 +115,10 @@ async function enviarConfirmacionHibrida() {
     }
 
     const saldo = total - yape;
-    
+
     // 1. Construir el mensaje contextual según el saldo
-    const mensajeTexto = saldo === 0 
-        ? `El servicio quedará marcado como TOTALMENTE PAGADO (Saldo: S/ 0.00).` 
+    const mensajeTexto = saldo === 0
+        ? `El servicio quedará marcado como TOTALMENTE PAGADO (Saldo: S/ 0.00).`
         : `Quedará un saldo pendiente por cobrar en la barbería de S/ ${saldo.toFixed(2)}.`;
 
     // 2. Inyectar el texto en el modal premium
@@ -131,7 +129,7 @@ async function enviarConfirmacionHibrida() {
     modalConfirmInstance.show();
 
     // 4. Asignar la acción de ejecución real al botón "Aceptar" del nuevo modal
-    document.getElementById('btnAceptarSaldoPremium').onclick = async function() {
+    document.getElementById('btnAceptarSaldoPremium').onclick = async function () {
         modalConfirmInstance.hide(); // Ocultamos el modal de confirmación
 
         try {
@@ -139,14 +137,14 @@ async function enviarConfirmacionHibrida() {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': getCsrf() }
             });
-            
+
             if (res.ok) {
                 // Ocultamos el modal principal de auditoría
                 if (modalPagoInstance) modalPagoInstance.hide();
-                
+
                 const fila = document.getElementById('fila-' + id);
                 if (fila) fila.remove();
-                
+
                 mostrarToast('ok', 'Reserva verificada con éxito.');
             } else {
                 mostrarToast('err', 'Error al procesar el abono en el servidor.');
@@ -167,13 +165,13 @@ async function accionCita(id, accion) {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': getCsrf() }
         });
-        if (res.ok) { 
+        if (res.ok) {
             const fila = document.getElementById('fila-' + id);
-            if (fila) fila.remove(); 
-            mostrarToast('ok', '❌ Cita cancelada.'); 
+            if (fila) fila.remove();
+            mostrarToast('ok', '❌ Cita cancelada.');
         }
-    } catch (e) { 
-        mostrarToast('err', 'Error de conexión.'); 
+    } catch (e) {
+        mostrarToast('err', 'Error de conexión.');
     }
 }
 

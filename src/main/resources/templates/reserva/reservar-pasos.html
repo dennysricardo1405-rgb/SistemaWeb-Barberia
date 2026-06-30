@@ -7,7 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Barlow:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf-header" content="X-CSRF-TOKEN" />
     <link rel="stylesheet" th:href="@{/css/reservar-pasos.css(v=2)}">
@@ -62,14 +64,22 @@
             <h2 class="step-title">Elige tu servicio</h2>
             <p class="step-subtitle">Selecciona el servicio que deseas reservar</p>
             <div class="options-grid">
-                <div th:each="s : ${servicios}" class="option-card"
-                     th:data-id="${s.id}" th:data-nombre="${s.nombre}"
-                     th:data-precio="${s.precio}" th:data-duracion="${s.duracionMinutos}"
-                     onclick="seleccionarServicio(this)">
+                <div th:each="s : ${servicios}" class="option-card" th:data-id="${s.id}" th:data-nombre="${s.nombre}"
+                    th:data-precio="${promoHelper.calcularPrecioServicio(s)}" th:data-duracion="${s.duracionMinutos}"
+                    onclick="seleccionarServicio(this)">
                     <div class="option-icon"><i class="fa-solid fa-cut"></i></div>
                     <div class="option-name" th:text="${s.nombre}">Corte Clásico</div>
                     <div class="option-detail" th:text="${s.duracionMinutos} + ' min'">30 min</div>
-                    <div class="option-price" th:text="'S/. ' + ${s.precio}">S/. 25.00</div>
+
+                    <div>
+                        <small th:if="${promoHelper.calcularPrecioServicio(s) < s.precio.doubleValue()}"
+                            style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.8rem; display: block;"
+                            th:text="'S/. ' + ${s.precio}"></small>
+
+                        <div class="option-price"
+                            th:text="'S/. ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioServicio(s), 1, 2)}">
+                            S/. 25.00</div>
+                    </div>
                 </div>
             </div>
             <div class="d-flex justify-content-end mt-4">
@@ -84,9 +94,8 @@
             <h2 class="step-title">Elige tu barbero</h2>
             <p class="step-subtitle">¿Con quién quieres tu cita?</p>
             <div class="d-flex flex-column gap-3">
-                <div th:each="b : ${barberos}" class="barbero-card"
-                     th:data-id="${b.id}" th:data-nombre="${b.nombre}"
-                     onclick="seleccionarBarbero(this)">
+                <div th:each="b : ${barberos}" class="barbero-card" th:data-id="${b.id}" th:data-nombre="${b.nombre}"
+                    onclick="seleccionarBarbero(this)">
                     <div class="barbero-avatar"><i class="fa-solid fa-user"></i></div>
                     <div>
                         <div class="barbero-name" th:text="${b.nombre}">Carlos Mendoza</div>
@@ -118,7 +127,8 @@
                     <label class="modal-label mb-2">HORARIOS DISPONIBLES</label>
                     <div class="horas-grid" id="horasGrid"></div>
                 </div>
-                <div id="loadingHoras" style="display:none; color:var(--text-muted); margin-top:12px; font-size:0.9rem;">
+                <div id="loadingHoras"
+                    style="display:none; color:var(--text-muted); margin-top:12px; font-size:0.9rem;">
                     <i class="fa-solid fa-spinner fa-spin me-2"></i>Cargando horarios...
                 </div>
                 <div id="sinHoras" style="display:none; color:var(--text-muted); margin-top:12px; font-size:0.9rem;">
@@ -197,24 +207,17 @@
                         <div class="mb-3">
                             <label class="modal-label">CORREO ELECTRÓNICO</label>
                             <!-- ← máx 30 caracteres -->
-                            <input type="email" id="loginEmail"
-                                   class="modal-form-control w-100"
-                                   placeholder="tu@correo.com"
-                                   maxlength="30">
+                            <input type="email" id="loginEmail" class="modal-form-control w-100"
+                                placeholder="tu@correo.com" maxlength="30">
                         </div>
                         <div class="mb-4">
                             <label class="modal-label">CONTRASEÑA</label>
                             <div class="d-flex">
                                 <!-- ← mín 6, máx 30 caracteres -->
-                                <input type="password" id="loginPassword"
-                                       class="modal-form-control flex-grow-1"
-                                       placeholder="Mín. 6 caracteres"
-                                       minlength="6"
-                                       maxlength="30"
-                                       style="border-radius:6px 0 0 6px; border-right:none;">
-                                <button type="button"
-                                        onclick="togglePass('loginPassword','ojoLogin')"
-                                        style="background:#1a1a1a;
+                                <input type="password" id="loginPassword" class="modal-form-control flex-grow-1"
+                                    placeholder="Mín. 6 caracteres" minlength="6" maxlength="30"
+                                    style="border-radius:6px 0 0 6px; border-right:none;">
+                                <button type="button" onclick="togglePass('loginPassword','ojoLogin')" style="background:#1a1a1a;
                                                border:1px solid rgba(201,168,76,0.2);
                                                border-left:none;
                                                border-radius:0 6px 6px 0;
@@ -238,10 +241,8 @@
                         <div class="mb-3">
                             <label class="modal-label">DNI</label>
                             <div class="d-flex gap-2">
-                                <input type="text" id="regDni"
-                                       class="modal-form-control flex-grow-1"
-                                       maxlength="8" placeholder="12345678"
-                                       oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                                <input type="text" id="regDni" class="modal-form-control flex-grow-1" maxlength="8"
+                                    placeholder="12345678" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                                 <button class="btn-gold px-3" onclick="buscarDniModal()">
                                     <i class="fa-solid fa-magnifying-glass"></i>
                                 </button>
@@ -250,43 +251,32 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="modal-label">NOMBRES</label>
-                                <input type="text" id="regNombres"
-                                       class="modal-form-control w-100" readonly>
+                                <input type="text" id="regNombres" class="modal-form-control w-100" readonly>
                             </div>
                             <div class="col-6">
                                 <label class="modal-label">APELLIDOS</label>
-                                <input type="text" id="regApellidos"
-                                       class="modal-form-control w-100" readonly>
+                                <input type="text" id="regApellidos" class="modal-form-control w-100" readonly>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="modal-label">TELÉFONO (WhatsApp)</label>
-                            <input type="text" id="regTelefono"
-                                   class="modal-form-control w-100"
-                                   maxlength="9" placeholder="987654321"
-                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                            <input type="text" id="regTelefono" class="modal-form-control w-100" maxlength="9"
+                                placeholder="987654321" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                         </div>
                         <div class="mb-3">
                             <label class="modal-label">CORREO</label>
                             <!-- ← máx 30 caracteres -->
-                            <input type="email" id="regCorreo"
-                                   class="modal-form-control w-100"
-                                   placeholder="tu@correo.com"
-                                   maxlength="30">
+                            <input type="email" id="regCorreo" class="modal-form-control w-100"
+                                placeholder="tu@correo.com" maxlength="30">
                         </div>
                         <div class="mb-4">
                             <label class="modal-label">CONTRASEÑA</label>
                             <div class="d-flex">
                                 <!-- ← mín 6, máx 30 caracteres -->
-                                <input type="password" id="regPassword"
-                                       class="modal-form-control flex-grow-1"
-                                       placeholder="Mín. 6 caracteres"
-                                       minlength="6"
-                                       maxlength="30"
-                                       style="border-radius:6px 0 0 6px; border-right:none;">
-                                <button type="button"
-                                        onclick="togglePass('regPassword','ojoReg')"
-                                        style="background:#1a1a1a;
+                                <input type="password" id="regPassword" class="modal-form-control flex-grow-1"
+                                    placeholder="Mín. 6 caracteres" minlength="6" maxlength="30"
+                                    style="border-radius:6px 0 0 6px; border-right:none;">
+                                <button type="button" onclick="togglePass('regPassword','ojoReg')" style="background:#1a1a1a;
                                                border:1px solid rgba(201,168,76,0.2);
                                                border-left:none;
                                                border-radius:0 6px 6px 0;
@@ -315,7 +305,7 @@
     <script>
         function togglePass(inputId, iconId) {
             const input = document.getElementById(inputId);
-            const icon  = document.getElementById(iconId);
+            const icon = document.getElementById(iconId);
             if (input.type === 'password') {
                 input.type = 'text';
                 icon.classList.replace('fa-eye', 'fa-eye-slash');
@@ -327,4 +317,5 @@
     </script>
 
 </body>
+
 </html>
