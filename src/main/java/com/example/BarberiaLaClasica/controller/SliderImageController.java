@@ -91,18 +91,19 @@ public class SliderImageController {
     // ════════════════════════════════════════════════
     @PostMapping("/config/guardar")
     public String guardarConfig(
-            @RequestParam Map<String, String> params,
-            @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
-            RedirectAttributes ra) {
-        try {
-            params.remove("_csrf");
-            params.remove("grupo");
-            configService.guardarGrupo(params, logoFile);
-            ra.addFlashAttribute("success", "Configuración guardada correctamente.");
-        } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error al guardar: " + e.getMessage());
-        }
-        return "redirect:/admin/slider";
+        @RequestParam Map<String, String> params,
+        @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
+        @RequestParam(value = "yapeQrFile", required = false) MultipartFile yapeQrFile,
+        RedirectAttributes ra) {
+    try {
+        params.remove("_csrf");
+        params.remove("grupo");
+        configService.guardarGrupo(params, logoFile, yapeQrFile);
+        ra.addFlashAttribute("success", "Configuración guardada correctamente.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("error", "Error al guardar: " + e.getMessage());
     }
+    return "redirect:/admin/slider";
+}
 
 }
