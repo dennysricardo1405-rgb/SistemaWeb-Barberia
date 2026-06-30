@@ -142,17 +142,17 @@
                                nota.cliente.nombres + ' ' + nota.cliente.apellidos : 
                                'Cliente sin registro'}">—</td>
                                     <td>
-                                        <span th:if="${nota.session?.cita != null}" style="background:rgba(46,204,113,0.12);color:#2ecc71;
-                                 border:1px solid rgba(46,204,113,0.3);
-                                 border-radius:12px;padding:2px 8px;font-size:0.72rem;
-                                 font-weight:700;">
+                                        <span th:if="${nota['session'] != null and nota['session'].cita != null}" style="background:rgba(46,204,113,0.12);color:#2ecc71;
+                 border:1px solid rgba(46,204,113,0.3);
+                 border-radius:12px;padding:2px 8px;font-size:0.72rem;
+                 font-weight:700;">
                                             Reserva Web
                                         </span>
-                                        <span th:if="${nota.session?.cita == null}" style="background:rgba(201,168,76,0.12);color:#c9a84c;
-                                 border:1px solid rgba(201,168,76,0.3);
-                                 border-radius:12px;padding:2px 8px;font-size:0.72rem;
-                                 font-weight:700;">
-                                            Precensial
+                                        <span th:if="${nota['session'] == null or nota['session'].cita == null}" style="background:rgba(201,168,76,0.12);color:#c9a84c;
+                 border:1px solid rgba(201,168,76,0.3);
+                 border-radius:12px;padding:2px 8px;font-size:0.72rem;
+                 font-weight:700;">
+                                            Presencial
                                         </span>
                                     </td>
                                     <td class="text-end td-precio"
