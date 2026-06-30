@@ -85,11 +85,16 @@
                             </select>
 
                             <div id="subWrapperProductoUnico">
-                                <select name="productoId" id="promoProductoId" class="form-select input-dark">
-                                    <option value="">-- Seleccionar Producto --</option>
-                                    <option th:each="p : ${productos}" th:value="${p.id}"
-                                        th:text="${p.nombre} + ' (S/ ' + ${p.precioVenta} + ')'"></option>
-                                </select>
+                                <input type="hidden" name="productoId" id="promoProductoId">
+
+                                <div class="input-group">
+                                    <input type="text" id="promoProductoTexto" class="form-control input-dark" readonly
+                                        placeholder="Ningún producto seleccionado...">
+                                    <button class="btn btn-warning text-dark fw-bold" type="button"
+                                        data-bs-toggle="modal" data-bs-target="#modalBuscarProducto">
+                                        <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                                    </button>
+                                </div>
                             </div>
 
                             <div id="subWrapperCategoria" class="d-none">
@@ -184,8 +189,15 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-warning" title="Editar"
-                                                th:attr="onclick='cargarEditarPromo(' + ${p.id} + ',\'' + ${p.nombre} + '\',\'' + ${p.descripcion} + '\',\'' + ${p.tipoPromocion} + '\',' + ${p.porcentajeDescuento} + ',\'' + ${p.fechaInicio} + '\',\'' + ${p.fechaFin} + '\',' + ${p.minimoVisitasRequeridas} + ',' + ${p.servicio != null ? p.servicio.id : 'null'} + ',' + ${p.producto != null ? p.producto.id : 'null'} + ',' + ${p.categoria != null ? p.categoria.id : 'null'} + ')'">
+                                            <button class="btn btn-outline-warning btn-editar-promo" title="Editar"
+                                                th:data-id="${p.id}" th:data-nombre="${p.nombre}"
+                                                th:data-descripcion="${p.descripcion}" th:data-tipo="${p.tipoPromocion}"
+                                                th:data-descuento="${p.porcentajeDescuento}"
+                                                th:data-inicio="${p.fechaInicio}" th:data-fin="${p.fechaFin}"
+                                                th:data-visitas="${p.minimoVisitasRequeridas}"
+                                                th:data-servicio="${p.servicio != null ? p.servicio.id : ''}"
+                                                th:data-producto="${p.producto != null ? p.producto.id : ''}"
+                                                th:data-categoria="${p.categoria != null ? p.categoria.id : ''}">
                                                 <i class="fa-solid fa-pen"></i>
                                             </button>
                                             <a th:href="@{/admin/promociones/toggle/{id}(id=${p.id})}"
@@ -209,7 +221,54 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="modalBuscarProducto" tabindex="-1" aria-labelledby="modalBuscarProductoLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-light" style="background: #111; border: 1px solid rgba(201, 168, 76, 0.25);">
+                <div class="modal-header border-0 pb-0">
+                    <h6 class="modal-title fw-bold text-uppercase" id="modalBuscarProductoLabel"
+                        style="color: #c9a84c;">
+                        <i class="fa-solid fa-boxes-stacked me-2"></i>Seleccionar Producto
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3 position-relative">
+                        <input type="text" id="buscadorModalProd" class="form-control input-dark"
+                            placeholder="Buscar por nombre de producto..." style="padding-left: 35px;">
+                        <i class="fa-solid fa-magnifying-glass position-absolute text-muted"
+                            style="left: 12px; top: 12px; font-size: 0.85rem;"></i>
+                    </div>
 
+                    <div class="list-group option-product-list" id="listaProductosModal"
+                        style="max-height: 300px; overflow-y: auto;">
+                        <button th:each="p : ${productos}" type="button"
+                            class="list-group-item list-group-item-action item-prod-modal text-start text-light"
+                            style="background: #1a1a1f; border: 1px solid rgba(255,255,255,0.04); margin-bottom: 4px; border-radius: 6px;"
+                            th:data-id="${p.id}" th:data-nombre="${p.nombre}" th:data-precio="${p.precioVenta}"
+                            th:data-stock="${p.stock}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold d-block text-warning" th:text="${p.nombre}"></span>
+                                    <small class="text-white-50"
+                                        th:text="'Precio: S/ ' + ${#numbers.formatDecimal(p.precioVenta, 1, 2)}"></small>
+                                </div>
+                                <span
+                                    th:class="${p.stock > 0} ? 'badge bg-opacity-25 text-success bg-success' : 'badge bg-opacity-25 text-danger bg-danger'"
+                                    th:text="'Stock: ' + ${p.stock}" style="font-size: 0.72rem;">
+                                </span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-sm btn-outline-secondary text-white rounded-pill px-3"
+                        data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script th:src="@{/js/promociones.js}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

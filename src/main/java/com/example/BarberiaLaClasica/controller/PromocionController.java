@@ -84,12 +84,18 @@ public class PromocionController {
     @PostMapping("/guardar")
     public String guardarPromocion(
             @RequestParam(required = false) Long id,
-            @RequestParam String nombre,
-            @RequestParam String descripcion,
-            @RequestParam String tipoPromocion, // "SERVICIO" o "PRODUCTO"
-            @RequestParam BigDecimal porcentajeDescuento,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
+            @RequestParam(required = false) String nombre,
+            @RequestParam(required = false) String descripcion,
+            @RequestParam(required = false) String tipoPromocion, // "SERVICIO" o "PRODUCTO"
+            @RequestParam(required = false) BigDecimal porcentajeDescuento, // 🛟 Cambiado a false para evitar Error 400
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio, // 🛟
+                                                                                                                           // Cambiado
+                                                                                                                           // a
+                                                                                                                           // false
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin, // 🛟
+                                                                                                                        // Cambiado
+                                                                                                                        // a
+                                                                                                                        // false
             @RequestParam(defaultValue = "0") int minimoVisitasRequeridas,
             @RequestParam(required = false) Long servicioId,
             @RequestParam(required = false) Long productoId,
@@ -97,6 +103,25 @@ public class PromocionController {
             RedirectAttributes ra) {
 
         try {
+            // ── 1. VALIDACIÓN DE CAMPOS VACÍOS (Evita errores de Spring) ──
+            if (nombre == null || nombre.trim().isEmpty() ||
+                    descripcion == null || descripcion.trim().isEmpty() ||
+                    tipoPromocion == null || tipoPromocion.trim().isEmpty() ||
+                    porcentajeDescuento == null || fechaInicio == null || fechaFin == null) {
+
+                throw new RuntimeException("Todos los campos obligatorios deben ser completados.");
+            }
+
+            // ── 2. VALIDACIÓN DE REGLA DE NEGOCIO: MÁXIMO 4 MESES VIGENCIA ──
+            if (fechaInicio.isAfter(fechaFin)) {
+                throw new RuntimeException("La fecha de inicio no puede ser posterior a la fecha de fin.");
+            }
+
+            if (fechaInicio.plusMonths(4).isBefore(fechaFin)) {
+                throw new RuntimeException("La vigencia máxima permitida para una promoción es de 4 meses.");
+            }
+
+            // Lógica existente de persistencia
             Promocion promo;
             if (id != null) {
                 promo = promocionRepository.findById(id)
@@ -135,7 +160,7 @@ public class PromocionController {
             ra.addFlashAttribute("exito", "Promoción guardada correctamente.");
 
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error al guardar: " + e.getMessage());
+            ra.addFlashAttribute("error", e.getMessage());
         }
 
         return "redirect:/admin/promociones";
