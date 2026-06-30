@@ -252,12 +252,15 @@ public class RecepcionController {
     public ResponseEntity<Map<String, Object>> detalleNota(@PathVariable Long id) {
         NotaVenta nota = recepcionService.obtenerNota(id);
 
-        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d -> Map.<String, Object>of(
-                "descripcion", d.getDescripcion(),
-                "cantidad", d.getCantidad(),
-                "precioUnitario", d.getPrecioUnitario(),
-                "subtotal", d.getSubtotal(),
-                "tipo", d.getTipo())).toList();
+        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("descripcion", d.getDescripcion());
+            item.put("cantidad", d.getCantidad());
+            item.put("precioUnitario", d.getPrecioUnitario());
+            item.put("subtotal", d.getSubtotal());
+            item.put("tipo", d.getTipo());
+            return item;
+        }).toList();
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id", nota.getId());
@@ -269,6 +272,12 @@ public class RecepcionController {
         resp.put("barbero", nota.getBarbero() != null ? nota.getBarbero().getNombre() : null);
         resp.put("total", nota.getTotal());
         resp.put("detalles", detalles);
+
+        // ── 💵 CAMPOS AUDITORÍA FINANCIERA ──
+        resp.put("metodoPago", nota.getMetodoPago());
+        resp.put("montoEfectivo", nota.getMontoEfectivo());
+        resp.put("montoYape", nota.getMontoYape());
+        resp.put("codigoYape", nota.getCodigoYape());
 
         return ResponseEntity.ok(resp);
     }

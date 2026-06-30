@@ -1,74 +1,144 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("promoForm");
-    const inputPorcentaje = document.getElementById("promoPorcentaje");
-    const errorDescuento = document.getElementById("errorDescuento");
+document.addEventListener("DOMContentLoaded", () => {
+    // ── DECLARACIONES INICIALES DE VARIABLES (El error estaba aquí) ──
     const inputInicio = document.getElementById("promoInicio");
     const inputFin = document.getElementById("promoFin");
-
-    // ── 1. CONFIGURACIÓN DE RESTRICCIÓN DE FECHAS ANTERIORES (datetime-local) ──
-    const ahora = new Date();
-    const anio = ahora.getFullYear();
-    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-    const dia = String(ahora.getDate()).padStart(2, '0');
-    const horas = String(ahora.getHours()).padStart(2, '0');
-    const minutos = String(ahora.getMinutes()).padStart(2, '0');
+    const form = document.getElementById("promoForm");
     
-    // Formato requerido por datetime-local: YYYY-MM-DDTHH:mm
-    const formatoFechaMinima = `${anio}-${mes}-${dia}T${horas}:${minutos}`;
+    const buscador = document.getElementById("buscadorModalProd");
+    const itemsProductos = document.querySelectorAll(".item-prod-modal");
+    const inputHiddenId = document.getElementById("promoProductoId");
+    const inputTextoVisible = document.getElementById("promoProductoTexto");
 
-    if (inputInicio) inputInicio.min = formatoFechaMinima;
-    if (inputFin) inputFin.min = formatoFechaMinima;
+    // ── 1. VALIDACIÓN DE CALENDARIO (No días pasados, máximo 4 meses) ──
+    if (inputInicio && inputFin) {
+        const ahora = new Date();
+        const offset = ahora.getTimezoneOffset() * 60000;
+        const tiempoLocal = new Date(ahora - offset).toISOString().slice(0, 16);
 
-    // Ajuste dinámico: La fecha fin no puede ser menor a la fecha de inicio elegida
-    inputInicio.addEventListener("change", function () {
-        if (inputFin) inputFin.min = this.value;
+        // Bloqueamos días pasados para el inicio
+        inputInicio.min = tiempoLocal;
+
+        inputInicio.addEventListener("change", () => {
+            if (inputInicio.value) {
+                // El fin no puede ser menor al inicio
+                inputFin.min = inputInicio.value;
+
+                // Calculamos el tope máximo de 4 meses exactos en el futuro
+                let fechaMax = new Date(inputInicio.value);
+                fechaMax.setMonth(fechaMax.getMonth() + 4);
+                inputFin.max = fechaMax.toISOString().slice(0, 16);
+            }
+        });
+    }
+
+    // ── 2. FILTRO DINÁMICO DEL BUSCADOR DEL MODAL ──
+    if (buscador) {
+        buscador.addEventListener("input", function() {
+            const termino = this.value.toLowerCase().trim();
+            itemsProductos.forEach(item => {
+                const nombre = item.dataset.nombre.toLowerCase();
+                if (nombre.includes(termino)) {
+                    item.style.setProperty("display", "block", "important");
+                } else {
+                    item.style.setProperty("display", "none", "important");
+                }
+            });
+        });
+    }
+
+    // ── 3. ACCIÓN DE SELECCIONAR UN PRODUCTO DESDE EL MODAL ──
+    itemsProductos.forEach(item => {
+        item.addEventListener("click", function () {
+            const id = this.dataset.id;
+            const nombre = this.dataset.nombre;
+            const precio = this.dataset.precio;
+            const stock = this.dataset.stock;
+
+            // Asignamos los valores a los inputs del formulario
+            if (inputHiddenId) inputHiddenId.value = id;
+            if (inputTextoVisible) inputTextoVisible.value = `${nombre} (S/ ${precio}) - [Stock: ${stock}]`;
+
+            // Cerramos el modal de forma limpia usando la API de Bootstrap
+            const modalElement = document.getElementById('modalBuscarProducto');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+        });
     });
 
-    // ── 2. VALIDACIÓN DEL LÍMITE DE DESCUENTO (Máximo 60%) ──
-    inputPorcentaje.addEventListener("input", function () {
-        const valor = parseFloat(this.value) || 0;
-        if (valor > 60) {
-            errorDescuento.style.display = "block";
-            this.classList.add("is-invalid");
-        } else {
-            errorDescuento.style.display = "none";
-            this.classList.remove("is-invalid");
-        }
-    });
+    // ── 4. LOGICA INTEGRAL PARA EL BOTÓN DE EDICIÓN ──
+    document.querySelectorAll(".btn-editar-promo").forEach(boton => {
+        boton.addEventListener("click", function () {
+            // Cambiar título del formulario
+            document.getElementById("formTitle").textContent = "Editar Promoción";
 
-    // ── 3. INTERCEPTOR Y CONTROL DE ENVÍO ──
-    form.addEventListener("submit", function (e) {
-        const porcentaje = parseFloat(inputPorcentaje.value) || 0;
+            // Extraer los datasets del botón
+            const id = this.dataset.id;
+            const nombre = this.dataset.nombre;
+            const description = this.dataset.descripcion;
+            const tipo = this.dataset.tipo;
+            const descuento = this.dataset.descuento;
+            const inicio = this.dataset.inicio;
+            const fin = this.dataset.fin;
+            const visitas = this.dataset.visitas;
+            const servicioId = this.dataset.servicio;
+            const productoId = this.dataset.producto;
+            const categoriaId = this.dataset.categoria;
 
-        if (porcentaje > 60) {
-            e.preventDefault();
-            errorDescuento.style.display = "block";
-            inputPorcentaje.focus();
-            return false;
-        }
+            // Poblar campos base de la promoción en el formulario
+            document.getElementById("promoId").value = id;
+            document.getElementById("promoNombre").value = nombre;
+            document.getElementById("promoDescripcion").value = description;
+            document.getElementById("promoPorcentaje").value = descuento;
+            document.getElementById("promoVisitas").value = visitas;
 
-        if (inputFin.value && inputInicio.value && inputFin.value < inputInicio.value) {
-            e.preventDefault();
-            alert("⚠️ Error en Vigencia: La fecha y hora de fin no puede ser anterior al inicio.");
-            return false;
-        }
+            // Asignar fechas recortando los segundos
+            if (inicio && inputInicio) inputInicio.value = inicio.slice(0, 16);
+            if (fin && inputFin) inputFin.value = fin.slice(0, 16);
+
+            // Cambiar el tipo de promoción y alternar los contenedores
+            const selectTipo = document.getElementById("promoTipo");
+            selectTipo.value = tipo;
+            alternarCamposFlujo();
+
+            // Mapear relaciones específicas según el flujo
+            if (tipo === "PRODUCTO") {
+                const selectAlcance = document.getElementById("filtroAlcanceProducto");
+                if (categoriaId) {
+                    selectAlcance.value = "CATEGORIA";
+                    document.getElementById("promoCategoriaId").value = categoriaId;
+                } else {
+                    selectAlcance.value = "ESPECIFICO";
+                    
+                    // Cargamos el texto estético en el input del modal
+                    const itemCorrespondiente = document.querySelector(`.item-prod-modal[data-id="${productoId}"]`);
+                    if (itemCorrespondiente && inputHiddenId && inputTextoVisible) {
+                        inputHiddenId.value = productoId;
+                        inputTextoVisible.value = `${itemCorrespondiente.dataset.nombre} (S/ ${itemCorrespondiente.dataset.precio}) - [Stock: ${itemCorrespondiente.dataset.stock}]`;
+                    }
+                }
+                alternarAlcanceProducto();
+            } else if (tipo === "SERVICIO") {
+                document.getElementById("promoServicioId").value = servicioId;
+            }
+        });
     });
 });
 
-// ── 4. FUNCIONES DE FLUJO ORIGINALES INTEGRADAS ──
+// ── 5. FUNCIONES DE FLUJO ORIGINALES INTEGRADAS (Fuera del DOMContentLoaded) ──
 function alternarCamposFlujo() {
     const tipo = document.getElementById("promoTipo").value;
     const wrapperServicio = document.getElementById("wrapperServicio");
     const wrapperProducto = document.getElementById("wrapperProducto");
 
     if (tipo === "SERVICIO") {
-        wrapperServicio.classList.remove("d-none");
-        wrapperProducto.classList.add("d-none");
+        if (wrapperServicio) wrapperServicio.classList.remove("d-none");
+        if (wrapperProducto) wrapperProducto.classList.add("d-none");
         document.getElementById("promoProductoId").value = "";
+        document.getElementById("promoProductoTexto").value = "";
         document.getElementById("promoCategoriaId").value = "";
     } else {
-        wrapperServicio.classList.add("d-none");
-        wrapperProducto.classList.remove("d-none");
+        if (wrapperServicio) wrapperServicio.classList.add("d-none");
+        if (wrapperProducto) wrapperProducto.classList.remove("d-none");
         document.getElementById("promoServicioId").value = "";
         alternarAlcanceProducto();
     }
@@ -80,20 +150,23 @@ function alternarAlcanceProducto() {
     const wrapperCat = document.getElementById("subWrapperCategoria");
 
     if (alcance === "ESPECIFICO") {
-        wrapperUnico.classList.remove("d-none");
-        wrapperCat.classList.add("d-none");
+        if (wrapperUnico) wrapperUnico.classList.remove("d-none");
+        if (wrapperCat) wrapperCat.classList.add("d-none");
         document.getElementById("promoCategoriaId").value = "";
     } else {
-        wrapperUnico.classList.add("d-none");
-        wrapperCat.classList.remove("d-none");
+        if (wrapperUnico) wrapperUnico.classList.add("d-none");
+        if (wrapperCat) wrapperCat.classList.remove("d-none");
         document.getElementById("promoProductoId").value = "";
+        document.getElementById("promoProductoTexto").value = "";
     }
 }
 
 function limpiarFormulario() {
     document.getElementById("promoForm").reset();
     document.getElementById("promoId").value = "";
-    document.getElementById("formTitle").innerText = "Nueva Promoción";
+    document.getElementById("promoProductoId").value = "";
+    document.getElementById("promoProductoTexto").value = "";
+    document.getElementById("formTitle").textContent = "Nueva Promoción";
     document.getElementById("errorDescuento").style.display = "none";
     document.getElementById("promoPorcentaje").classList.remove("is-invalid");
     alternarCamposFlujo();
