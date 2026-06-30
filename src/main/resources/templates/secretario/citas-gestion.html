@@ -87,7 +87,8 @@
                                     <td class="text-center">
                                         <div class="d-flex gap-2 justify-content-center">
                                             <button class="btn-confirmar" th:data-id="${c.id}"
-                                                th:data-total="${c.totalPrecio}" onclick="abrirModalConfirmacion(this)">
+                                                th:data-total="${promoHelper.calcularPrecioServicio(c.servicio)}"
+                                                onclick="abrirModalConfirmacion(this)">
                                                 <i class="fa-solid fa-calculator me-1"></i>Validar Cuenta
                                             </button>
                                             <button class="btn-rechazar"

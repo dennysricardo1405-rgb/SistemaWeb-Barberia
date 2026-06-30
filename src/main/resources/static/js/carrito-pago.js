@@ -3,10 +3,10 @@ const CSRF = document.querySelector('meta[name="_csrf"]')?.getAttribute('content
 
 // Cargar carrito desde localStorage
 function getCarrito() {
-    try { 
-        return JSON.parse(localStorage.getItem('carrito_barberia') || '[]'); 
-    } catch { 
-        return []; 
+    try {
+        return JSON.parse(localStorage.getItem('carrito_barberia') || '[]');
+    } catch {
+        return [];
     }
 }
 
@@ -43,13 +43,30 @@ async function cargarPaginaPago() {
         // Renderizar items de forma dinámica en el contenedor alternativo si existe
         const listaEl = document.getElementById('listaItems');
         const totalEl = document.getElementById('totalPagar');
-        
+
         if (listaEl && data.items) {
             listaEl.innerHTML = '';
             let total = 0;
 
             data.items.forEach(item => {
                 total += item.subtotal;
+
+                // ── CONTROL ESTÉTICO DE PRECIOS CON DESCUENTO ──
+                let formatoPreciosHtml = ``;
+
+                // Si el item cuenta con precioOriginal mapeado desde el backend y es mayor al cobrado
+                if (item.precioOriginal && item.precioOriginal > item.precio) {
+                    formatoPreciosHtml = `
+                        <span style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.8rem; margin-right: 6px;">
+                            S/ ${item.precioOriginal.toFixed(2)}
+                        </span>
+                        <strong style="color: #c9a84c;">S/ ${item.precio.toFixed(2)}</strong>
+                    `;
+                } else {
+                    // Si no tiene promoción, renderiza el precio regular de manera limpia
+                    formatoPreciosHtml = `<strong>S/ ${item.precio.toFixed(2)}</strong>`;
+                }
+
                 listaEl.innerHTML += `
                     <div class="item-pedido">
                         <img src="${item.imagen || 'https://thebarbercompany.pe/wp-content/uploads/2019/04/serv4.webp'}"
@@ -57,10 +74,12 @@ async function cargarPaginaPago() {
                         <div>
                             <div class="item-pedido-nombre">${item.nombre}</div>
                             <div class="item-pedido-meta">
-                                Cantidad: <strong>${item.cantidad}</strong> × S/ ${item.precio.toFixed(2)}
+                                Cantidad: <strong>${item.cantidad}</strong> × ${formatoPreciosHtml}
                             </div>
                         </div>
-                        <div class="item-pedido-precio">S/ ${item.subtotal.toFixed(2)}</div>
+                        <div class="item-pedido-precio" style="color: #c9a84c; font-weight: bold;">
+                            S/ ${item.subtotal.toFixed(2)}
+                        </div>
                     </div>`;
             });
 
@@ -83,7 +102,7 @@ function previewFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-        alert('La imagen no debe superar 5MB'); 
+        alert('La imagen no debe superar 5MB');
         return;
     }
     const img = document.getElementById('previewImg');
@@ -100,10 +119,10 @@ function handleDrop(e) {
     e.currentTarget.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    
+
     const dt = new DataTransfer();
     dt.items.add(file);
-    
+
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
         fileInput.files = dt.files;

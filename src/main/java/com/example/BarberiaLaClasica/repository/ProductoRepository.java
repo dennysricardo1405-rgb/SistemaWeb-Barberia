@@ -9,15 +9,8 @@ import java.util.List;
 
 @Repository
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
-    
-    // Alerta de stock: Busca productos activos cuyo stock sea menor o igual al límite (3 unidades)
     List<Producto> findByStockLessThanEqualAndActivoTrue(int limite);
-
-    // Para el catálogo online público: Solo productos de barbería que estén activos
-    // (Filtra buscando el nombre de la categoría padre o de la categoría misma)
     List<Producto> findByCategoriaNombreAndActivoTrue(String nombreCategoria);
-    
-    // Listar todos los productos activos
     List<Producto> findByActivoTrue();
     @Query("SELECT p FROM Producto p " +
        "JOIN FETCH p.categoria c " +

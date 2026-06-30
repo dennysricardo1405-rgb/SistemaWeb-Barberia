@@ -142,61 +142,70 @@ public class CitaService {
     }
 
     private void enviarEmail(Cita cita) {
-        try {
-            DateTimeFormatter fmtFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            DateTimeFormatter fmtHora = DateTimeFormatter.ofPattern("HH:mm");
+    try {
+        // ── PARCHE DE PRUEBAS PARA RAILWAY ──
+        // Interrumpimos el flujo de inmediato para evitar bloqueos por SMTP
+        System.out.println("Envío de correo omitido para el cliente: " + cita.getCliente().getCorreo());
+        return; 
 
-            String asunto = "Tu cita en Barbería La Clásica fue confirmada";
+        /* * El código original se queda empaquetado y comentado automáticamente debajo.
+         * Cuando configures tu dominio SMTP real en el futuro, solo borras las líneas del parche superior.
+         *
+        DateTimeFormatter fmtFecha = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter fmtHora = DateTimeFormatter.ofPattern("HH:mm");
 
-            String cuerpo = """
-                    <div style="font-family:Arial,sans-serif; max-width:520px; margin:0 auto; background:#111; color:#f0ece0; border-radius:12px; overflow:hidden;">
-                        <div style="background:#c9a84c; padding:24px; text-align:center;">
-                            <h2 style="margin:0; color:#0a0a0a;">Barbería La Clásica</h2>
-                            <p style="margin:4px 0 0; color:#0a0a0a; font-size:0.9rem;">Confirmación de Cita</p>
-                        </div>
-                        <div style="padding:28px;">
-                            <p style="font-size:1rem;">Hola <strong>%s</strong>, tu cita ha sido <strong style="color:#c9a84c;">CONFIRMADA</strong> 🎉</p>
-                            <table style="width:100%%; border-collapse:collapse; margin-top:16px;">
-                                <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Fecha</td>
-                                    <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
-                                <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Hora</td>
-                                    <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
-                                <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Servicio</td>
-                                    <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
-                                <tr><td style="padding:10px; color:#aaa;">Barbero</td>
-                                    <td style="padding:10px; font-weight:bold;">%s</td></tr>
-                            </table>
-                            <p style="margin-top:24px; font-size:0.85rem; color:#aaa;">Por favor llega 5 minutos antes. ¡Te esperamos!</p>
-                        </div>
-                        <div style="background:#1a1a1a; padding:14px; text-align:center; font-size:0.78rem; color:#555;">
-                            Barbería La Clásica — Chiclayo, Perú
-                        </div>
+        String asunto = "Tu cita en Barbería La Clásica fue confirmada";
+
+        String cuerpo = """
+                <div style="font-family:Arial,sans-serif; max-width:520px; margin:0 auto; background:#111; color:#f0ece0; border-radius:12px; overflow:hidden;">
+                    <div style="background:#c9a84c; padding:24px; text-align:center;">
+                        <h2 style="margin:0; color:#0a0a0a;">Barbería La Clásica</h2>
+                        <p style="margin:4px 0 0; color:#0a0a0a; font-size:0.9rem;">Confirmación de Cita</p>
                     </div>
-                    """
-                    .formatted(
-                            cita.getCliente().getNombres(),
-                            cita.getFecha().format(fmtFecha),
-                            cita.getHoraInicio().format(fmtHora),
-                            cita.getServicio().getNombre(),
-                            cita.getBarbero().getNombre());
+                    <div style="padding:28px;">
+                        <p style="font-size:1rem;">Hola <strong>%s</strong>, tu cita ha sido <strong style="color:#c9a84c;">CONFIRMADA</strong> 🎉</p>
+                        <table style="width:100%%; border-collapse:collapse; margin-top:16px;">
+                            <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Fecha</td>
+                                <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
+                            <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Hora</td>
+                                <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
+                            <tr><td style="padding:10px; border-bottom:1px solid #222; color:#aaa;">Servicio</td>
+                                <td style="padding:10px; border-bottom:1px solid #222; font-weight:bold;">%s</td></tr>
+                            <tr><td style="padding:10px; color:#aaa;">Barbero</td>
+                                <td style="padding:10px; font-weight:bold;">%s</td></tr>
+                        </table>
+                        <p style="margin-top:24px; font-size:0.85rem; color:#aaa;">Por favor llega 5 minutos antes. ¡Te esperamos!</p>
+                    </div>
+                    <div style="background:#1a1a1a; padding:14px; text-align:center; font-size:0.78rem; color:#555;">
+                        Barbería La Clásica — Chiclayo, Perú
+                    </div>
+                </div>
+                """
+                .formatted(
+                        cita.getCliente().getNombres(),
+                        cita.getFecha().format(fmtFecha),
+                        cita.getHoraInicio().format(fmtHora),
+                        cita.getServicio().getNombre(),
+                        cita.getBarbero().getNombre());
 
-            MimeMessage mensaje = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
-            helper.setFrom(mailFrom);
-            helper.setTo(cita.getCliente().getCorreo());
-            helper.setSubject(asunto);
-            helper.setText(cuerpo, true); // true = HTML
+        MimeMessage mensaje = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+        helper.setFrom(mailFrom);
+        helper.setTo(cita.getCliente().getCorreo());
+        helper.setSubject(asunto);
+        helper.setText(cuerpo, true);
 
-            mailSender.send(mensaje);
-            System.out.println("✅ Email enviado a: " + cita.getCliente().getCorreo());
+        mailSender.send(mensaje);
+        System.out.println("✅ Email enviado a: " + cita.getCliente().getCorreo());
+        */
 
-        } catch (Exception e) {
-            System.err.println("ERROR CORREO COMPLETO: " + e.getClass().getName()
-                    + " — " + e.getMessage());
-            if (e.getCause() != null)
-                System.err.println("CAUSA: " + e.getCause().getMessage());
-        }
+    } catch (Exception e) {
+        System.err.println("ERROR CORREO COMPLETO: " + e.getClass().getName()
+                + " — " + e.getMessage());
+        if (e.getCause() != null)
+            System.err.println("CAUSA: " + e.getCause().getMessage());
     }
+}
 
     // Historial paginado
     public Page<Cita> obtenerHistorialClientePaginado(String correo, int pagina) {

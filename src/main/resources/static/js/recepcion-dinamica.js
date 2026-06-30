@@ -154,9 +154,13 @@ function cargarConsumosDeSilla(barberoId) {
     fetch(`/secretario/recepcion/api-consumos/${barberoId}`)
         .then(r => r.json())
         .then(data => {
+            // Jalamos directamente los precios estructurados que envía el backend
+            const precioFinal = data.servicio ? Number(data.servicio.precio) : 0;
+            const precioOriginal = data.servicio ? Number(data.servicio.precioOriginal) : precioFinal;
+
             const labelServicio = document.getElementById('labelServicioActual');
             if (labelServicio) {
-                labelServicio.textContent = data.servicio ? data.servicio.nombre + '  ·  S/ ' + Number(data.servicio.precio).toFixed(2) : '—';
+                labelServicio.textContent = data.servicio ? data.servicio.nombre + '  ·  S/ ' + precioFinal.toFixed(2) : '—';
             }
 
             if (data.cliente) {
@@ -167,8 +171,20 @@ function cargarConsumosDeSilla(barberoId) {
             const tbody = document.getElementById('tablaDetalleConsumos');
             tbody.innerHTML = '';
 
+            // ── RENDERIZADO DEL SERVICIO CON PRECIO TACHADO SI TIENE PROMO ──
             if (data.servicio) {
-                const precio = Number(data.servicio.precio);
+                let columnaSubtotalHtml = ``;
+
+                // Si el precio cobrado es menor al original de la base de datos, mostramos el tachado
+                if (precioFinal < precioOriginal) {
+                    columnaSubtotalHtml = `
+                        <span style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.8rem; margin-right: 6px;">S/ ${precioOriginal.toFixed(2)}</span>
+                        <span class="text-warning fw-bold">S/ ${precioFinal.toFixed(2)}</span>
+                    `;
+                } else {
+                    columnaSubtotalHtml = `<span class="text-success fw-bold">S/ ${precioOriginal.toFixed(2)}</span>`;
+                }
+
                 tbody.innerHTML += `
                 <tr style="border-left:3px solid #c9a84c;">
                     <td>
@@ -177,12 +193,13 @@ function cargarConsumosDeSilla(barberoId) {
                         <span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">SERVICIO</span>
                     </td>
                     <td class="text-center">1</td>
-                    <td class="text-end">S/ ${precio.toFixed(2)}</td>
-                    <td class="text-end text-success fw-bold">S/ ${precio.toFixed(2)}</td>
+                    <td class="text-end">S/ ${precioOriginal.toFixed(2)}</td>
+                    <td class="text-end">${columnaSubtotalHtml}</td>
                     <td class="text-center"><i class="fa-solid fa-lock text-muted small"></i></td>
                 </tr>`;
             }
 
+            // Renderizado de productos consumidos existentes
             if (!data.consumos || data.consumos.length === 0) {
                 tbody.innerHTML += `<tr><td colspan="5" class="text-center text-muted py-2 small"><i class="fa-solid fa-box-open me-1"></i>Sin productos agregados aún</td></tr>`;
             } else {
@@ -202,9 +219,9 @@ function cargarConsumosDeSilla(barberoId) {
                 });
             }
 
-            const totalConsumos = data.total || 0;
-            const precioServicio = data.servicio ? Number(data.servicio.precio) : 0;
-            const totalAcumulado = totalConsumos + precioServicio;
+            // ── SOLUCIÓN AL BUG DE DUPLICACIÓN ──
+            // data.total ya contiene la suma final (Servicio con/sin descuento + Productos) calculada por el backend
+            const totalAcumulado = data.total || 0;
 
             document.getElementById('textoTotalSilla').textContent = 'S/ ' + totalAcumulado.toFixed(2);
 
@@ -393,8 +410,15 @@ async function finalizarAtencion() {
     const metodoPago = document.getElementById('selectMetodoPago')?.value || 'EFECTIVO';
     const montoYape = parseFloat(document.getElementById('inputMontoYape')?.value || '0') || 0;
     const codigoYape = document.getElementById('inputCodigoYape')?.value?.trim() || '';
+    const netoTexto = document.getElementById('lblNetoPorCobrar')?.innerText || '0';
+    const netoPorCobrar = parseFloat(netoTexto) || 0;
 
-    if ((metodoPago === 'MIXTO' || metodoPago === 'YAPE') && montoYape <= 0) {
+    if (metodoPago === 'MIXTO' && montoYape <= 0) {
+        mostrarToast('error', 'Falta monto', 'Ingresa el monto pagado por Yape.');
+        return;
+    }
+
+    if (metodoPago === 'YAPE' && netoPorCobrar > 0 && montoYape <= 0) {
         mostrarToast('error', 'Falta monto', 'Ingresa el monto pagado por Yape.');
         return;
     }
@@ -462,7 +486,7 @@ function actualizarDesglosePago() {
     const totalText = document.getElementById('textoTotalSilla')?.textContent || 'S/ 0';
     const totalAcumulado = parseFloat(totalText.replace('S/ ', '')) || 0;
     const anticipoWeb = parseFloat(document.getElementById('lblAnticipoWeb')?.innerText || '0') || 0;
-    
+
     const netoPorCobrar = Math.max(0, totalAcumulado - anticipoWeb);
     const lblNeto = document.getElementById('lblNetoPorCobrar');
     if (lblNeto) lblNeto.innerText = netoPorCobrar.toFixed(2);
@@ -482,14 +506,27 @@ function actualizarDesglosePago() {
     if (metodo === 'EFECTIVO') {
         if (inputMontoYape) { inputMontoYape.value = 0; inputMontoYape.readOnly = true; }
         if (labelEfectivo) labelEfectivo.style.display = 'none';
-    } 
+
+        // Evitamos cobrar en efectivo si ya se pagó todo por la web, forzando a que usen YAPE
+        if (netoPorCobrar === 0 && anticipoWeb > 0 && btnLiberar) {
+            btnLiberar.disabled = true;
+            btnLiberar.innerText = "⚠️ Ya pagado en web. Selecciona YAPE";
+        }
+    }
     else if (metodo === 'YAPE') {
-        if (inputMontoYape) { inputMontoYape.value = netoPorCobrar.toFixed(2); inputMontoYape.readOnly = true; }
+        if (inputMontoYape) {
+            // Si el neto es 0, el monto extra de Yape en caja es 0
+            inputMontoYape.value = netoPorCobrar.toFixed(2);
+            inputMontoYape.readOnly = true;
+        }
         if (labelEfectivo) labelEfectivo.style.display = 'none';
-    } 
+
+        // ── CONFIGURACIÓN DE SEGURIDAD ──
+        // Si ya está totalmente pagado, no bloqueamos el botón, permitimos procesarlo de inmediato
+    }
     else if (metodo === 'MIXTO') {
         if (inputMontoYape) inputMontoYape.readOnly = false;
-        
+
         let montoYapeDigitado = parseFloat(inputMontoYape?.value || '0') || 0;
         if (montoYapeDigitado < 0) { montoYapeDigitado = 0; inputMontoYape.value = 0; }
 
@@ -499,13 +536,19 @@ function actualizarDesglosePago() {
             labelEfectivo.style.display = 'block';
         }
 
-        if (montoYapeDigitado >= netoPorCobrar && btnLiberar) {
+        // Si el saldo neto ya es 0, no tiene sentido usar el modo Mixto
+        if (netoPorCobrar === 0 && btnLiberar) {
             btnLiberar.disabled = true;
-            btnLiberar.innerText = "⚠️ En Mixto, Yape debe ser menor al neto";
-        }
-        if (montoYapeDigitado <= 0 && btnLiberar) {
-            btnLiberar.disabled = true;
-            btnLiberar.innerText = "⚠️ Ingresa un monto Yape válido";
+            btnLiberar.innerText = "Saldo es S/ 0.00, usa el modo YAPE";
+        } else {
+            if (montoYapeDigitado >= netoPorCobrar && btnLiberar) {
+                btnLiberar.disabled = true;
+                btnLiberar.innerText = "En Mixto, Yape debe ser menor al neto";
+            }
+            if (montoYapeDigitado <= 0 && btnLiberar) {
+                btnLiberar.disabled = true;
+                btnLiberar.innerText = "Ingresa un monto Yape válido";
+            }
         }
     }
 }

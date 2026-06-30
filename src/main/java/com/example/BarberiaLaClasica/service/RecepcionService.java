@@ -50,6 +50,8 @@ public class RecepcionService {
     private ConsumoSillaRepository consumoRepository;
     @Autowired
     private NotaVentaRepository notaVentaRepository;
+    @Autowired
+    private PromocionHelper promocionHelper;
 
     // ── Cita de reserva confirmada para hoy de un barbero ─────────────────────
     public Optional<Cita> getCitaReservaHoy(Long barberoId) {
@@ -193,49 +195,96 @@ public class RecepcionService {
         nota.setSession(session);
         nota.setBarbero(session.getBarbero());
         nota.setCliente(session.getCliente());
+
+        nota.setMetodoPago(metodoPago);
+        nota.setMontoYape(montoYape);
+
         List<DetalleNotaVenta> detalles = new ArrayList<>();
 
-        // Servicio
+        // ── 1. CONDICIONAL DE PROMOCIÓN PARA EL SERVICIO ──────────────────
+        double precioServicioOriginal = session.getServicio().getPrecio().doubleValue();
+        double precioServicioFinal = precioServicioOriginal; // Tarifa normal por defecto (S/ 35.00)
+
+        // Verificamos si la sesión cuenta con una reserva web legítima y activa
+        if (session.getCita() != null && session.getCita().getId() != null) {
+            Cita cita = session.getCita();
+            // Si tiene un anticipo web mayor a cero, confirmamos que es una cita reservada
+            // por la web
+            if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                precioServicioFinal = promocionHelper.calcularPrecioServicio(session.getServicio()); // Aplica S/ 17.50
+            }
+        }
+
         DetalleNotaVenta linServicio = new DetalleNotaVenta();
         linServicio.setNotaVenta(nota);
         linServicio.setDescripcion(session.getServicio().getNombre());
         linServicio.setCantidad(1);
-        linServicio.setPrecioUnitario(session.getServicio().getPrecio().doubleValue());
-        linServicio.setSubtotal(session.getServicio().getPrecio().doubleValue());
+        linServicio.setPrecioUnitario(precioServicioFinal);
+        linServicio.setSubtotal(precioServicioFinal);
         linServicio.setTipo("SERVICIO");
         detalles.add(linServicio);
 
-        // Productos
+        // ── 2. CONDICIONAL DE PROMOCIÓN PARA PRODUCTOS ────────────────────
         for (ConsumoSilla c : consumos) {
+            double precioProductoOriginal = c.getProducto().getPrecioVenta();
+            double precioProductoFinal = precioProductoOriginal; // Tarifa normal por defecto
+
+            // Si es cliente de reserva web, sus productos también pueden evaluar promoción
+            if (session.getCita() != null && session.getCita().getId() != null) {
+                Cita cita = session.getCita();
+                if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                    precioProductoFinal = promocionHelper.calcularPrecioProducto(c.getProducto());
+                }
+            }
+
+            double subtotalProductoFinal = precioProductoFinal * c.getCantidad();
+
             DetalleNotaVenta lin = new DetalleNotaVenta();
             lin.setNotaVenta(nota);
             lin.setDescripcion(c.getProducto().getNombre());
             lin.setCantidad(c.getCantidad());
-            lin.setPrecioUnitario(c.getProducto().getPrecioVenta());
-            lin.setSubtotal(c.getSubtotal());
+            lin.setPrecioUnitario(precioProductoFinal);
+            lin.setSubtotal(subtotalProductoFinal);
             lin.setTipo("PRODUCTO");
             detalles.add(lin);
 
+            // Descuento de Stock físico
             Producto p = c.getProducto();
             p.setStock(p.getStock() - c.getCantidad());
             productoRepository.save(p);
         }
 
+        // ── 3. Cálculo Final de Totales ───────────────────────────────────
         double total = detalles.stream().mapToDouble(DetalleNotaVenta::getSubtotal).sum();
         nota.setTotal(total);
+
+        if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
+            nota.setMontoEfectivo(total);
+            nota.setMontoYape(0.0);
+        } else if ("YAPE".equalsIgnoreCase(metodoPago)) {
+            nota.setMontoEfectivo(0.0);
+            nota.setMontoYape(total);
+            nota.setCodigoYape(codigoYape);
+        } else { // Caso "MIXTO"
+            nota.setMontoYape(montoYape);
+            nota.setMontoEfectivo(Math.max(0, total - montoYape));
+            nota.setCodigoYape(codigoYape);
+        }
+
         nota.setDetalles(detalles);
         notaVentaRepository.save(nota);
 
+        // ── 4. Actualización de Cita y Sesión ──────────────────────────────
         if (session.getCita() != null) {
-            session.getCita().setEstado(3);
+            session.getCita().setEstado(3); // Finalizada / Atendida
             citaRepository.save(session.getCita());
         }
 
-        session.setEstado(0);
+        session.setEstado(0); // Cerrar silla
         sessionRepository.save(session);
 
         Barbero barbero = session.getBarbero();
-        barbero.setEstado(1);
+        barbero.setEstado(1); // Barbero Disponible
         barberoRepository.save(barbero);
 
         return nota;

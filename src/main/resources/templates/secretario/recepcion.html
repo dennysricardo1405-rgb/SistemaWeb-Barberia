@@ -167,8 +167,14 @@
                                 <td th:text="${cita.cliente?.nombres + ' ' + cita.cliente?.apellidos}"></td>
                                 <td th:text="${cita.barbero?.nombre}"></td>
                                 <td th:text="${cita.servicio?.nombre}"></td>
-                                <td class="text-end font-monospace text-success fw-bold"
-                                    th:text="'S/ ' + ${cita.servicio?.precio}"></td>
+                                <td class="text-end font-monospace text-success fw-bold">
+                                    <small
+                                        th:if="${promoHelper.calcularPrecioServicio(cita.servicio) < cita.servicio?.precio?.doubleValue()}"
+                                        style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.75rem; margin-right: 5px;"
+                                        th:text="'S/ ' + ${cita.servicio?.precio}"></small>
+                                    <span
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioServicio(cita.servicio), 1, 2)}"></span>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -413,8 +419,11 @@
                                             th:data-nombre="${prod.nombre}">
                                             <td class="fw-bold text-white" th:text="${prod.nombre}"></td>
                                             <td class="text-center font-monospace" th:text="${prod.stock}"></td>
+
                                             <td class="text-end text-gold font-monospace fw-semibold"
-                                                th:text="'S/ ' + ${prod.precioVenta}"></td>
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioProducto(prod), 1, 2)}">
+                                            </td>
+
                                             <td class="text-center" style="width:75px;">
                                                 <input type="number" th:id="'cant-' + ${prod.id}"
                                                     class="form-control form-control-sm bg-dark border-secondary text-white text-center p-1"
@@ -455,9 +464,16 @@
                                 </table>
                             </div>
                             <div
-                                class="d-flex justify-content-between align-items-center p-3 bg-black bg-opacity-60 rounded-3 border border-secondary border-opacity-25 mt-3">
-                                <h6 class="m-0 fw-bold text-muted text-uppercase small">Total Acumulado:</h6>
-                                <h4 class="m-0 fw-bold text-success font-monospace" id="textoTotalSilla">S/ 0.00</h4>
+                                class="p-3 bg-black bg-opacity-60 rounded-3 border border-secondary border-opacity-25 mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="m-0 fw-bold text-muted text-uppercase small">Total Acumulado:</h6>
+                                    <h4 class="m-0 fw-bold text-success font-monospace" id="textoTotalSilla">S/ 0.00
+                                    </h4>
+                                </div>
+                                <div id="notificacionDescuentoCaja" class="text-end small text-warning"
+                                    style="display:none; font-size: 0.78rem;">
+                                    <i class="fa-solid fa-tags me-1"></i> Descuento de promoción aplicado en caja
+                                </div>
                             </div>
                         </div>
 
