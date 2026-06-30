@@ -162,6 +162,31 @@ public class CitaService {
                         <h2 style="margin:0; color:#0a0a0a;">Barbería La Clásica</h2>
                         <p style="margin:4px 0 0; color:#0a0a0a; font-size:0.9rem;">Confirmación de Cita</p>
                     </div>
+
+                    """
+                    .formatted(
+                            cita.getCliente().getNombres(),
+                            cita.getFecha().format(fmtFecha),
+                            cita.getHoraInicio().format(fmtHora),
+                            cita.getServicio().getNombre(),
+                            cita.getBarbero().getNombre());
+
+            MimeMessage mensaje = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(cita.getCliente().getCorreo());
+            helper.setSubject(asunto);
+            helper.setText(cuerpo, true); // true = HTML
+
+            mailSender.send(mensaje);
+            System.out.println("✅ Email enviado a: " + cita.getCliente().getCorreo());
+
+        } catch (Exception e) {
+    System.err.println("ERROR CORREO COMPLETO: " + e.getClass().getName() 
+                       + " — " + e.getMessage());
+    if (e.getCause() != null) 
+        System.err.println("CAUSA: " + e.getCause().getMessage());
+}
                     <div style="padding:28px;">
                         <p style="font-size:1rem;">Hola <strong>%s</strong>, tu cita ha sido <strong style="color:#c9a84c;">CONFIRMADA</strong> 🎉</p>
                         <table style="width:100%%; border-collapse:collapse; margin-top:16px;">
@@ -204,6 +229,7 @@ public class CitaService {
                 + " — " + e.getMessage());
         if (e.getCause() != null)
             System.err.println("CAUSA: " + e.getCause().getMessage());
+
     }
 }
 

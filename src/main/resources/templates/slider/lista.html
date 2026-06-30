@@ -686,6 +686,47 @@
             <i class="fa-solid fa-circle-check me-2"></i><span th:text="${success}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
+    </div>
+
+    <!-- ── Alertas flash ── -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <i class="fa-solid fa-circle-check me-2"></i><span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="fa-solid fa-circle-xmark me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- ══════════════ TABS ══════════════ -->
+    <div class="site-tabs">
+        <button class="site-tab-btn active" onclick="switchTab('slider', this)">
+            <span class="tab-dot"></span>
+            <i class="fa-solid fa-images"></i> Slider
+        </button>
+        <button class="site-tab-btn" onclick="switchTab('identidad', this)">
+            <span class="tab-dot"></span>
+            <i class="fa-solid fa-palette"></i> Identidad & Marca
+        </button>
+        <button class="site-tab-btn" onclick="switchTab('contacto', this)">
+            <span class="tab-dot"></span>
+            <i class="fa-solid fa-address-book"></i> Contacto & Horarios
+        </button>
+        <button class="site-tab-btn" onclick="switchTab('redes', this)">
+            <span class="tab-dot"></span>
+            <i class="fa-solid fa-share-nodes"></i> Redes Sociales
+        </button>
+        <button class="site-tab-btn" onclick="switchTab('pagos', this)">
+            <span class="tab-dot"></span>
+            <i class="fa-solid fa-money-bill-wave"></i> Pagos
+        </button>
+        <button class="site-tab-btn" onclick="switchTab('promociones', this)">
+            <span class="tab-dot"></span>
+            <i class="fa-solid fa-tag"></i> Promociones
+        </button>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
         <div th:if="${error}" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
             <i class="fa-solid fa-circle-xmark me-2"></i><span th:text="${error}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -1112,6 +1153,122 @@
         </div><!-- /tab-contacto -->
 
 
+    <!-- ════════════════════════════════════════════════
+     TAB — PAGOS (YAPE)
+════════════════════════════════════════════════ -->
+<div id="tab-pagos" class="tab-panel">
+    <form th:action="@{/admin/slider/config/guardar}" method="post" enctype="multipart/form-data">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="grupo" value="yape"/>
+
+        <div class="row g-4">
+
+            <div class="col-lg-5">
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div class="header-icon"><i class="fa-solid fa-qrcode"></i></div>
+                        <div>
+                            <h6>Código QR de Yape</h6>
+                            <p>Se muestra al cliente al pagar su reserva</p>
+                        </div>
+                    </div>
+                    <div class="config-card-body">
+                        <div class="logo-preview-box" id="yapeQrPreviewBox">
+                            <img th:if="${config != null and config['yape_qr_url'] != null and !#strings.isEmpty(config['yape_qr_url'])}"
+                                 th:src="${config['yape_qr_url']}"
+                                 id="yapeQrPreviewImg" alt="QR actual">
+                            <div th:unless="${config != null and config['yape_qr_url'] != null and !#strings.isEmpty(config['yape_qr_url'])}"
+                                 class="logo-placeholder" id="yapeQrPlaceholder">
+                                <i class="fa-solid fa-qrcode fa-2x" style="color:var(--gold);"></i>
+                                <span>Sin QR cargado</span>
+                            </div>
+                        </div>
+
+                        <div class="upload-zone" id="uzYapeQr">
+                            <input type="file" name="yapeQrFile" id="fileYapeQr" accept="image/*">
+                            <div class="uz-icon" style="font-size:1.4rem;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <p class="text-white mb-0" style="font-size:0.82rem;">Subir nuevo QR</p>
+                            <p class="mb-0" style="color:var(--muted);font-size:0.72rem;">PNG · JPG — captura del QR de tu app Yape</p>
+                            <div class="file-chosen" id="fnYapeQr" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div class="header-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                        <div>
+                            <h6>Datos de Yape</h6>
+                            <p>Número, titular y porcentaje de adelanto</p>
+                        </div>
+                    </div>
+                    <div class="config-card-body">
+
+                        <div class="mb-3">
+                            <label class="form-label">Número de Yape</label>
+                            <input type="text" class="form-control" name="yape_numero"
+                                   th:value="${config != null ? config['yape_numero'] : '987 654 321'}"
+                                   placeholder="987 654 321">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del titular</label>
+                            <input type="text" class="form-control" name="yape_titular"
+                                   th:value="${config != null ? config['yape_titular'] : 'Barbería La Clásica'}"
+                                   placeholder="Barbería La Clásica">
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label">% de adelanto requerido</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="yape_porcentaje" min="0" max="100"
+                                       th:value="${config != null ? config['yape_porcentaje'] : '25'}">
+                                <span class="input-group-text" style="background:#1a1a1a;border-color:rgba(255,255,255,0.1);color:var(--muted);">%</span>
+                            </div>
+                            <small style="color:var(--muted);font-size:0.72rem;">Porcentaje del total que el cliente debe adelantar para confirmar su cita.</small>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-end mt-2">
+            <button type="submit" class="btn-gold-solid" style="width:auto;padding:10px 28px;">
+                <i class="fa-solid fa-floppy-disk me-2"></i>Guardar Datos de Yape
+            </button>
+        </div>
+    </form>
+</div><!-- /tab-pagos -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- ════════════════════════════════════════════════
+         TAB 5 — PROMOCIONES
         <!-- ════════════════════════════════════════════════
          TAB 4 — REDES SOCIALES
     ════════════════════════════════════════════════ -->
@@ -1220,6 +1377,48 @@
                         <i class="fa-solid fa-floppy-disk me-2"></i>Guardar Redes Sociales
                     </button>
                 </div>
+            </div>
+        </div>
+    </div><!-- /tab-promociones -->
+
+</div><!-- /main-content -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ── Tabs ───────────────────────────────────────────── */
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.site-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    // Guardar tab activo en sessionStorage
+    sessionStorage.setItem('activeAdminTab', name);
+}
+
+/* ── Restaurar tab al recargar ──────────────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+    const saved = sessionStorage.getItem('activeAdminTab');
+    if (saved) {
+        const btn = [...document.querySelectorAll('.site-tab-btn')]
+            .find(b => b.getAttribute('onclick').includes("'" + saved + "'"));
+        if (btn) switchTab(saved, btn);
+    }
+
+    /* ── Upload zones ── */
+    setupUploadZone('uzSlider',  'fileSlider', 'fnSlider', 'pwSlider', 'piSlider');
+    setupUploadZone('uzLogo',    'fileLogo',   'fnLogo',   null,        null,       logoPreviewCallback);
+    setupUploadZone('uzPromo',   'filePromo',  'fnPromo',  'pwPromo',  'piPromo');
+    setupUploadZone('uzYapeQr', 'fileYapeQr', 'fnYapeQr', null, null, yapeQrPreviewCallback);
+
+    /* ── Sincronizar color picker ── */
+    const cp   = document.getElementById('colorPrimario');
+    const cpTx = document.getElementById('colorPrimarioText');
+    if (cp && cpTx) {
+        cp.addEventListener('input', () => cpTx.value = cp.value);
+        cpTx.addEventListener('input', () => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(cpTx.value)) cp.value = cpTx.value;
+        });
+    }
             </form>
         </div><!-- /tab-redes -->
 
@@ -1269,6 +1468,61 @@
                 });
             }, 4500);
         });
+    }, 4500);
+});
+
+/* ── Helper upload zone ─────────────────────────────── */
+function setupUploadZone(zoneId, inputId, nameId, wrapId, imgId, callback) {
+    const zone  = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const name  = document.getElementById(nameId);
+    const wrap  = wrapId  ? document.getElementById(wrapId) : null;
+    const img   = imgId   ? document.getElementById(imgId)  : null;
+    if (!zone || !input) return;
+
+    input.addEventListener('change', function () {
+        if (!this.files || !this.files[0]) return;
+        name.textContent  = this.files[0].name;
+        name.style.display = 'block';
+        const reader = new FileReader();
+        reader.onload = e => {
+            if (wrap && img) { img.src = e.target.result; wrap.style.display = 'block'; }
+            if (callback)    callback(e.target.result);
+        };
+        reader.readAsDataURL(this.files[0]);
+    });
+
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault(); zone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            input.dispatchEvent(new Event('change'));
+        }
+    });
+}
+
+/* ── Preview logo especial ──────────────────────────── */
+function logoPreviewCallback(src) {
+    const box = document.getElementById('logoPreviewBox');
+    if (!box) return;
+    box.innerHTML = `<img src="${src}" style="max-width:200px;max-height:80px;object-fit:contain;" alt="Logo nuevo">`;
+}
+
+function yapeQrPreviewCallback(src) {
+    const box = document.getElementById('yapeQrPreviewBox');
+    if (!box) return;
+    box.innerHTML = `<img src="${src}" style="max-width:120px;max-height:120px;object-fit:contain;" alt="QR nuevo">`;
+}
+
+/* ── Badge selector ─────────────────────────────────── */
+function selectBadge(el, value) {
+    document.querySelectorAll('.badge-option').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('promoBadgeInput').value = value;
+}
+</script>
 
         /* ── Helper upload zone ─────────────────────────────── */
         function setupUploadZone(zoneId, inputId, nameId, wrapId, imgId, callback) {
