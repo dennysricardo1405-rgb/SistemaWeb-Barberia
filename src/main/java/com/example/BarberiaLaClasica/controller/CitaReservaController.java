@@ -2,6 +2,7 @@ package com.example.BarberiaLaClasica.controller;
 
 import com.example.BarberiaLaClasica.service.CitaService;
 import com.example.BarberiaLaClasica.service.PromocionHelper;
+import com.example.BarberiaLaClasica.service.ConfiguracionSitioService;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.model.Cita;
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
@@ -36,6 +37,8 @@ public class CitaReservaController {
     private ClienteRepository clienteRepository;
     @Autowired
     private PromocionHelper promocionHelper;
+    @Autowired
+    private ConfiguracionSitioService configuracionSitioService;
     // ─────────────────────────────────────────────────────────────────
     // PASO 1-3: Asistente público (sin login requerido)
     // ─────────────────────────────────────────────────────────────────
@@ -153,6 +156,7 @@ public class CitaReservaController {
         model.addAttribute("hora", session.getAttribute("preCita_hora"));
         model.addAttribute("servicioId", servicioId);
         model.addAttribute("barberoId", barberoId);
+        model.addAttribute("config", configuracionSitioService.obtenerMapa());
 
         return "reserva/reserva-pago";
     }

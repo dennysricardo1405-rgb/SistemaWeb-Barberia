@@ -44,6 +44,10 @@ public class ConfiguracionSitioService {
         DEFAULTS.put("whatsapp_url",     new String[]{"url",    "redes",     "WhatsApp URL",               ""});
         DEFAULTS.put("tiktok_url",       new String[]{"url",    "redes",     "TikTok",                     ""});
         DEFAULTS.put("youtube_url",      new String[]{"url",    "redes",     "YouTube",                    ""});
+        DEFAULTS.put("yape_numero",      new String[]{"texto",  "yape", "Número de Yape",          "987 654 321"});
+        DEFAULTS.put("yape_titular",     new String[]{"texto",  "yape", "Nombre del titular",       "Barbería La Clásica"});
+        DEFAULTS.put("yape_porcentaje",  new String[]{"texto",  "yape", "% de adelanto requerido",  "25"});
+        DEFAULTS.put("yape_qr_url",      new String[]{"imagen", "yape", "Imagen QR de Yape",        ""});
     }
  
     public ConfiguracionSitioService(ConfiguracionSitioRepository repo) {
@@ -69,29 +73,42 @@ public class ConfiguracionSitioService {
      * @param params   Map<clave, valor> venido del formulario
      * @param logoFile archivo de imagen del logo (puede ser null)
      */
-    public void guardarGrupo(Map<String, String> params, MultipartFile logoFile) throws IOException {
-        // Si hay logo nuevo, subirlo primero
-        if (logoFile != null && !logoFile.isEmpty()) {
-            String ext = "";
-            String orig = logoFile.getOriginalFilename();
-            if (orig != null && orig.contains(".")) ext = orig.substring(orig.lastIndexOf("."));
-            String nombre = "logo-" + UUID.randomUUID() + ext;
-            Path destino = Paths.get(UPLOAD_DIR + nombre);
-            Files.createDirectories(destino.getParent());
-            Files.copy(logoFile.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
-            params.put("logo_url", "/uploads/config/" + nombre);
-        }
- 
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            String clave = entry.getKey();
-            if (!DEFAULTS.containsKey(clave)) continue; // ignorar claves desconocidas
-            String[] meta = DEFAULTS.get(clave);
-            ConfiguracionSitio cfg = repo.findById(clave)
-                .orElse(new ConfiguracionSitio(clave, "", meta[0], meta[1], meta[2]));
-            cfg.setValor(entry.getValue());
-            repo.save(cfg);
-        }
+    
+    public void guardarGrupo(Map<String, String> params, MultipartFile logoFile, MultipartFile yapeQrFile) throws IOException {
+    // Logo
+    if (logoFile != null && !logoFile.isEmpty()) {
+        String ext = "";
+        String orig = logoFile.getOriginalFilename();
+        if (orig != null && orig.contains(".")) ext = orig.substring(orig.lastIndexOf("."));
+        String nombre = "logo-" + UUID.randomUUID() + ext;
+        Path destino = Paths.get(UPLOAD_DIR + nombre);
+        Files.createDirectories(destino.getParent());
+        Files.copy(logoFile.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
+        params.put("logo_url", "/uploads/config/" + nombre);
     }
+
+    // QR de Yape
+    if (yapeQrFile != null && !yapeQrFile.isEmpty()) {
+        String ext = "";
+        String orig = yapeQrFile.getOriginalFilename();
+        if (orig != null && orig.contains(".")) ext = orig.substring(orig.lastIndexOf("."));
+        String nombre = "yape-qr-" + UUID.randomUUID() + ext;
+        Path destino = Paths.get(UPLOAD_DIR + nombre);
+        Files.createDirectories(destino.getParent());
+        Files.copy(yapeQrFile.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
+        params.put("yape_qr_url", "/uploads/config/" + nombre);
+    }
+
+    for (Map.Entry<String, String> entry : params.entrySet()) {
+        String clave = entry.getKey();
+        if (!DEFAULTS.containsKey(clave)) continue;
+        String[] meta = DEFAULTS.get(clave);
+        ConfiguracionSitio cfg = repo.findById(clave)
+            .orElse(new ConfiguracionSitio(clave, "", meta[0], meta[1], meta[2]));
+        cfg.setValor(entry.getValue());
+        repo.save(cfg);
+    }
+}
  
     /**
      * Inicializa la BD con todos los defaults si están vacíos.
