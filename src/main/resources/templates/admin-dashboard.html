@@ -2,438 +2,100 @@
 <html xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <title>Dashboard | Barbería La Clásica</title>
+    <title>Dashboard | BarberPro</title>
     <div th:replace="~{layout/sidebar :: head_comun}"></div>
-     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    <style>
-        :root {
-            --orange:      #f97316;
-            --orange-light:rgba(249,115,22,.12);
-            --green:       #22c55e;
-            --green-light: rgba(34,197,94,.12);
-            --purple:      #a855f7;
-            --purple-light:rgba(168,85,247,.12);
-            --blue:        #38bdf8;
-            --blue-light:  rgba(56,189,248,.12);
-            --red:         #ef4444;
-            --surface:     #1a1a1d;
-            --surface2:    #222226;
-            --border:      #2e2e33;
-            --text:        #f1f1f3;
-            --text-muted:  #8a8a95;
-            --text-soft:   #c4c4cc;
-            --bg:          #0f0f10;
-        }
-
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
-
-        /* WELCOME BANNER */
-        .welcome-banner {
-            background: linear-gradient(135deg, #1a1a1d 0%, #222226 100%);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 28px 32px;
-            margin-bottom: 28px;
-            position: relative;
-            overflow: hidden;
-        }
-        .welcome-banner::after {
-            content: '✂️';
-            position: absolute;
-            right: 32px; top: 50%;
-            transform: translateY(-50%);
-            font-size: 72px;
-            opacity: .06;
-            pointer-events: none;
-        }
-        .welcome-banner h2 { font-size: 26px; font-weight: 700; }
-        .welcome-banner h2 span { color: var(--orange); }
-        .date-badge {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--orange);
-            white-space: nowrap;
-        }
-
-        /* KPI CARDS */
-        .stat-card {
-            background: var(--surface);
-            border: 1px solid var(--border) !important;
-            border-radius: 14px !important;
-            transition: transform .15s, border-color .15s;
-            position: relative;
-            overflow: hidden;
-        }
-        .stat-card.clickable { cursor: pointer; }
-        .stat-card.clickable:hover { transform: translateY(-3px); border-color: #444 !important; }
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            border-radius: 14px 14px 0 0;
-        }
-        .stat-card.c-orange::before { background: var(--orange); }
-        .stat-card.c-green::before  { background: var(--green); }
-        .stat-card.c-purple::before { background: var(--purple); }
-        .stat-card.c-blue::before   { background: var(--blue); }
-
-        .stat-card .card-body { padding: 20px 22px; }
-
-        .kpi-label {
-            font-size: 10.5px; font-weight: 700;
-            letter-spacing: 1.2px; text-transform: uppercase;
-            color: var(--text-muted); margin-bottom: 10px;
-        }
-        .kpi-value {
-            font-size: 38px; font-weight: 800;
-            line-height: 1; margin-bottom: 6px;
-        }
-        .stat-card.c-orange .kpi-value { color: var(--orange); }
-        .stat-card.c-green  .kpi-value { color: var(--green); }
-        .stat-card.c-purple .kpi-value { color: var(--purple); }
-        .stat-card.c-blue   .kpi-value { color: var(--blue); }
-
-        .kpi-sub { font-size: 11.5px; color: var(--text-muted); }
-
-        .kpi-icon {
-            width: 46px; height: 46px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; flex-shrink: 0; align-self: flex-start;
-        }
-        .stat-card.c-orange .kpi-icon { background: var(--orange-light); }
-        .stat-card.c-green  .kpi-icon { background: var(--green-light); }
-        .stat-card.c-purple .kpi-icon { background: var(--purple-light); }
-        .stat-card.c-blue   .kpi-icon { background: var(--blue-light); }
-
-        /* DASH CARDS */
-        .dash-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            overflow: hidden; height: 100%;
-        }
-        .dash-card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .dash-card-header .title { font-size: 14px; font-weight: 600; }
-        .dash-card-header .sub   { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
-
-        .pill { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-        .pill-orange { background: var(--orange-light); color: var(--orange); }
-        .pill-green  { background: var(--green-light);  color: var(--green); }
-
-        .view-all { font-size: 12px; color: var(--orange); text-decoration: none; font-weight: 600; }
-        .view-all:hover { text-decoration: underline; color: var(--orange); }
-
-        /* CITAS TABLE */
-        .citas-table { width: 100%; border-collapse: collapse; }
-        .citas-table thead tr { background: var(--surface2); }
-        .citas-table th {
-            padding: 10px 16px;
-            font-size: 10.5px; font-weight: 700; letter-spacing: .8px;
-            text-transform: uppercase; color: var(--text-muted); text-align: left;
-        }
-        .citas-table td {
-            padding: 12px 16px; font-size: 13px;
-            color: var(--text-soft); border-bottom: 1px solid var(--border);
-            vertical-align: middle;
-        }
-        .citas-table tr:last-child td { border-bottom: none; }
-        .citas-table tbody tr:hover td { background: var(--surface2); }
-
-        .client-cell { display: flex; align-items: center; gap: 10px; }
-        .mini-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
-        }
-        .client-name { font-weight: 600; color: var(--text); font-size: 13px; }
-
-        .status-pill {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 3px 10px; border-radius: 20px;
-            font-size: 11px; font-weight: 600; white-space: nowrap;
-        }
-        .status-pill::before { content:''; width:6px; height:6px; border-radius:50%; }
-        .s-confirmada { background: rgba(56,189,248,.12); color: var(--blue); }
-        .s-confirmada::before { background: var(--blue); }
-        .s-pendiente  { background: var(--orange-light); color: var(--orange); }
-        .s-pendiente::before  { background: var(--orange); }
-        .s-cancelada  { background: rgba(239,68,68,.12); color: var(--red); }
-        .s-cancelada::before  { background: var(--red); }
-        .s-completada { background: var(--green-light);  color: var(--green); }
-        .s-completada::before { background: var(--green); }
-
-        .empty-state { text-align:center; padding:48px 20px; color:var(--text-muted); }
-        .empty-state .emoji { font-size:36px; margin-bottom:10px; }
-        .empty-state p { font-size:13px; }
-
-        /* BARBEROS */
-        .barbero-item {
-            display:flex; align-items:center; gap:12px;
-            padding:14px 20px; border-bottom:1px solid var(--border);
-            transition:background .1s;
-        }
-        .barbero-item:last-child { border-bottom:none; }
-        .barbero-item:hover { background:var(--surface2); }
-        .barbero-ava { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
-        .barbero-name { font-size:13.5px; font-weight:600; }
-        .barbero-spec { font-size:11.5px; color:var(--text-muted); margin-top:1px; }
-        .barbero-citas-num { font-size:20px; font-weight:800; color:var(--orange); text-align:right; }
-        .barbero-citas-lbl { font-size:10px; color:var(--text-muted); text-align:right; }
-
-        /* SERVICIOS */
-        .servicio-item {
-            display:flex; align-items:center; gap:12px;
-            padding:12px 20px; border-bottom:1px solid var(--border);
-        }
-        .servicio-item:last-child { border-bottom:none; }
-        .srv-rank { font-size:15px; font-weight:800; color:var(--border); width:24px; flex-shrink:0; }
-        .srv-rank.top { color:var(--orange); }
-        .srv-name { font-size:13px; font-weight:600; color:var(--text); }
-        .srv-bar-wrap { height:4px; background:var(--surface2); border-radius:3px; margin-top:5px; overflow:hidden; }
-        .srv-bar { height:100%; border-radius:3px; background:var(--orange); }
-        .srv-count { font-size:14px; font-weight:700; color:var(--text-soft); flex-shrink:0; }
-
-        @media(max-width:768px){
-            .welcome-banner { padding:20px; }
-            .kpi-value { font-size:28px; }
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}">
 </head>
 
 <body>
-<div th:replace="~{layout/sidebar :: sidebar_menu(activePage='dashboard')}"></div>
+    <div th:replace="~{layout/sidebar :: sidebar_menu(activePage='dashboard')}"></div>
 
-<div class="main-content">
-<div class="container-fluid pb-4">
+    <div class="main-content">
+        <div class="container-fluid">
 
-    <!-- WELCOME -->
-    <div class="welcome-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div>
-            <h2 class="fw-bold mb-1">
-                ¡Bienvenido, Admin!
-            </h2>
-            <p class="mb-0" style="font-size:13.5px; color:var(--text-muted);">
-                
-            </p>
-        </div>
-        <div class="date-badge"
-             th:text="${#temporals.format(#temporals.createNow(), 'EEEE, dd MMM yyyy')}">
-            Domingo, 21 Jun 2026
-        </div>
-    </div>
-
-    <!-- KPIs -->
-    <div class="row g-3 mb-4">
-
-        <div class="col-xl-4 col-md-6">
-            <div class="card stat-card c-orange border-0 h-100 clickable"
-                 onclick="location.href='/admin/barberos'">
-                <div class="card-body d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="kpi-label">Barberos</div>
-                        <div class="kpi-value" th:text="${totalBarberos}">0</div>
-                        <div class="kpi-sub">Activos este mes</div>
-                    </div>
-                    <div class="kpi-icon"><i class="bi bi-scissors"></i></div>
+            <div class="welcome-banner d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold mb-1">
+                        ¡Bienvenido, <span th:text="${usuarioNombre}">Usuario</span>!
+                    </h2>
+                    <p class="text-muted mb-0">Resumen operativo de BarberPro.</p>
+                </div>
+                <div class="text-end">
+                    <h5 class="mb-0 text-primary fw-bold"
+                        th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}"></h5>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl-4 col-md-6">
-            <div class="card stat-card c-purple border-0 h-100 clickable"
-            onclick="location.href='/admin/cliente'">
-                <div class="card-body d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="kpi-label">Clientes</div>
-                        <div class="kpi-value" th:text="${totalClientes}">0</div>
-                        <div class="kpi-sub">Registrados</div>
-                    </div>
-                    <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
-                </div>
-            </div>
-        </div>
+            <div class="row g-4">
 
-        <div class="col-xl-4 col-md-6">
-            <div class="card stat-card c-blue border-0 h-100">
-                <div class="card-body d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="kpi-label">Ingresos Mes</div>
-                        <div class="kpi-value" style="font-size:28px;"
-                             th:text="'S/ ' + ${#numbers.formatDecimal(ingresosMes, 1, 2)}">S/ 0.00</div>
-                        <div class="kpi-sub">Mes en curso</div>
-                    </div>
-                    <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- BARBEROS -->
-    <div class="row g-3 mb-3">
-        <!-- Barberos del mes -->
-        <div class="col-xl-12">
-            <div class="dash-card">
-                <div class="dash-card-header">
-                    <div>
-                        <div class="title">Barberos</div>
-                        <div class="sub">Citas del mes</div>
-                    </div>
-                    <span class="pill pill-orange"
-                          th:text="${totalBarberos} + ' activos'">0 activos</span>
-                </div>
-
-                <div th:if="${barberoStats == null or #lists.isEmpty(barberoStats)}"
-                     class="empty-state">
-                    <i class="bi bi-scissors"></i>
-                    <p>Sin datos de barberos aún.</p>
-                </div>
-
-                <div th:if="${barberoStats != null and !#lists.isEmpty(barberoStats)}">
-                    <div class="barbero-item" th:each="b : ${barberoStats}">
-                        <div class="barbero-ava"
-                             th:style="'background:' + (${b.colorFondo} ?: 'rgba(249,115,22,.15)')">
-                            <span th:text="${b.emoji} ?: '✂️'">✂️</span>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="barbero-name" th:text="${b.nombre}">Barbero</div>
-                            <div class="barbero-spec"
-                                 th:text="${b.especialidad} ?: 'General'">General</div>
-                        </div>
-                        <div>
-                            <div class="barbero-citas-num" th:text="${b.citasMes}">0</div>
-                            <div class="barbero-citas-lbl">citas</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- GRÁFICO + SERVICIOS POPULARES -->
-    <div class="row g-3">
-
-        <!-- Ingresos semanales -->
-        <div class="col-xl-7">
-            <div class="dash-card">
-                <div class="dash-card-header">
-                    <div>
-                        <div class="title">Ingresos Diarios</div>
-                        <div class="sub">Últimos 7 días</div>
-                    </div>
-                    <a href="/admin/barberos/sueldos" class="view-all">Ver sueldos →</a>
-                </div>
-                <div style="padding:20px; height: 280px;">
-                    <canvas id="ingresosChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Servicios populares -->
-        <div class="col-xl-5">
-            <div class="dash-card">
-                <div class="dash-card-header">
-                    <div>
-                        <div class="title">Servicios Populares</div>
-                        <div class="sub">Top del mes</div>
-                    </div>
-                </div>
-
-                <div th:if="${serviciosPopulares == null or #lists.isEmpty(serviciosPopulares)}"
-                     class="empty-state">
-                    <i class="bi bi-shop"></i>
-                    <p>Sin datos de servicios aún.</p>
-                </div>
-
-                <div th:if="${serviciosPopulares != null and !#lists.isEmpty(serviciosPopulares)}">
-                    <div class="servicio-item"
-                         th:each="srv, iter : ${serviciosPopulares}">
-                        <div class="srv-rank"
-                             th:classappend="${iter.index < 3} ? 'top'"
-                             th:text="'#' + ${iter.index + 1}">#1</div>
-                        <div class="flex-grow-1">
-                            <div class="srv-name" th:text="${srv.nombre}">Servicio</div>
-                            <div class="srv-bar-wrap">
-                                <div class="srv-bar"
-                                     th:style="'width:' + ${srv.porcentaje} + '%;' +
-                                               (${iter.index >= 3} ? 'background:var(--text-muted)' : '')">
-                                </div>
+                <!-- Total Barberos -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card shadow-sm h-100"
+                         onclick="location.href='/admin/barberos'" style="cursor:pointer;">
+                        <div class="card-body d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-muted small fw-bold text-uppercase">Barberos</h6>
+                                <h2 class="fw-bold" th:text="${totalBarberos}">0</h2>
+                            </div>
+                            <div class="icon-box bg-primary-subtle text-primary">
+                                <i class="fa-solid fa-cut"></i>
                             </div>
                         </div>
-                        <div class="srv-count" th:text="${srv.cantidad}">0</div>
                     </div>
                 </div>
-            </div>
-        </div>
 
+                <!-- Citas Hoy -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card bg-gradient-green text-white shadow-sm h-100"
+                         onclick="location.href='/admin/citas'" style="cursor:pointer;">
+                        <div class="card-body d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-white-50 small fw-bold text-uppercase">Citas Hoy</h6>
+                                <h2 class="fw-bold" th:text="${citasHoy}">0</h2>
+                            </div>
+                            <div class="icon-box bg-white-50">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Clientes -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card shadow-sm h-100"
+                         onclick="location.href='/admin/clientes'" style="cursor:pointer;">
+                        <div class="card-body d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-muted small fw-bold text-uppercase">Clientes</h6>
+                                <h2 class="fw-bold" th:text="${totalClientes}">0</h2>
+                            </div>
+                            <div class="icon-box bg-purple-subtle text-purple">
+                                <i class="fa-solid fa-user-group"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ingresos del Mes -->
+                <div class="col-xl-3 col-md-6">
+                    <div class="card stat-card bg-gradient-blue text-white shadow-sm h-100">
+                        <div class="card-body d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-white-50 small fw-bold text-uppercase">Ingresos Mes</h6>
+                                <h2 class="fw-bold" th:text="'S/ ' + ${ingresosMes}">S/ 0.00</h2>
+                            </div>
+                            <div class="icon-box bg-white-50">
+                                <i class="fa-solid fa-money-bill-trend-up"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
     </div>
 
-</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script th:inline="javascript">
-
-const labels  = /*[[${ingresosLabels}]]*/ [];
-const valores = /*[[${ingresosValores}]]*/ [];
-
-const ctx = document.getElementById('ingresosChart').getContext('2d');
-const grad = ctx.createLinearGradient(0, 0, 0, 200);
-grad.addColorStop(0, 'rgba(249,115,22,.5)');
-grad.addColorStop(1, 'rgba(249,115,22,.02)');
-
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels,
-        datasets: [{
-            label: 'Ingresos (S/)',
-            data: valores,
-            backgroundColor: grad,
-            borderColor: '#f97316',
-            borderWidth: 2,
-            borderRadius: 6,
-            borderSkipped: false
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: '#1a1a1d',
-                borderColor: '#2e2e33',
-                borderWidth: 1,
-                titleColor: '#f1f1f3',
-                bodyColor: '#f97316',
-                callbacks: { label: c => ' S/ ' + c.parsed.y.toFixed(2) }
-            }
-        },
-        scales: {
-            x: { grid: { color: '#2e2e33' }, ticks: { color: '#8a8a95', font: { size: 11 } } },
-            y: {
-                grid: { color: '#2e2e33' },
-                ticks: { color: '#8a8a95', font: { size: 11 }, callback: v => 'S/ ' + v }
-            }
-        }
-    }
-});
-
-</script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
