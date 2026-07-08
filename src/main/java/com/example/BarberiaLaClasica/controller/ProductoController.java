@@ -96,19 +96,34 @@ public class ProductoController {
 
     // VISTAS PARA EL FORMULARIO DE COMPRAS A PROVEEDOR
     @GetMapping("/compras")
-    public String vistaCompras(Model model) {
+    public String vistaCompras(Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+            
+        // Creamos la paginación de 10 en 10 registros
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        
+        // Traemos la página de compras desde el repositorio
+        org.springframework.data.domain.Page<CompraProveedor> comprasPage = compraProveedorRepository.findAllByOrderByIdDesc(pageable);
+
         model.addAttribute("productos", productoService.listarActivos());
         model.addAttribute("proveedores", proveedorService.listarTodos());
-        model.addAttribute("historialCompras", compraProveedorRepository.findAll());
+        
+        // Pasamos el contenido pálido de la página actual a la tabla
+        model.addAttribute("historialCompras", comprasPage.getContent());
 
-        CompraProveedor nuevaCompra = new CompraProveedor();
-        nuevaCompra.setProveedor(new Proveedor());
-        nuevaCompra.setProducto(new Producto());
+        // Atributos obligatorios para armar el paginador en el HTML
+        model.addAttribute("comprasPage", comprasPage);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", comprasPage.getTotalPages());
+        model.addAttribute("totalItems", comprasPage.getTotalElements());
+        model.addAttribute("size", size);
 
-        model.addAttribute("compra", nuevaCompra);
-        return "productos/compras";
+        model.addAttribute("compra", new CompraProveedor());
+        return "productos/compras"; 
     }
 
+    // 2. Procesa el formulario. URL de acción: /admin/productos/compras/guardar
     @PostMapping("/compras/guardar")
     public String guardarCompra(
             @ModelAttribute("compra") CompraProveedor compra,
@@ -117,15 +132,17 @@ public class ProductoController {
         compra.setEsCompraDirecta(esCompraDirecta);
 
         if (esCompraDirecta) {
-            compra.setProveedor(null); // ← null real, no objeto vacío
+            compra.setProveedor(null);
         } else {
-            // Si viene con id vacío del form, también limpiarlo
             if (compra.getProveedor() != null && compra.getProveedor().getId() == null) {
                 compra.setProveedor(null);
             }
         }
 
         productoService.registrarCompra(compra);
+
+        // Redirecciona a la URL del GetMapping para refrescar la pantalla y mostrar la
+        // tabla limpia
         return "redirect:/admin/productos/compras?compraExitosa";
     }
 }

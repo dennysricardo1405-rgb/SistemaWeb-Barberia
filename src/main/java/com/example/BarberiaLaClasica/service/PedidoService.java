@@ -13,7 +13,6 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,11 +20,12 @@ import com.example.BarberiaLaClasica.model.Cliente;
 import com.example.BarberiaLaClasica.model.DetallePedido;
 import com.example.BarberiaLaClasica.model.PedidoOnline;
 import com.example.BarberiaLaClasica.model.Producto;
+import com.example.BarberiaLaClasica.model.HistorialInventario; // ← Importamos Entidad
 import com.example.BarberiaLaClasica.repository.ClienteRepository;
 import com.example.BarberiaLaClasica.repository.PedidoOnlineRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
+import com.example.BarberiaLaClasica.repository.HistorialInventarioRepository; // ← Importamos Repositorio
 
-import jakarta.mail.internet.MimeMessage;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -38,6 +38,8 @@ public class PedidoService {
     @Autowired
     private ProductoRepository productoRepository;
     @Autowired
+    private HistorialInventarioRepository historialInventarioRepository; // ← Inyectamos el Kardex
+    @Autowired
     private JavaMailSender mailSender;
 
     @Value("${app.mail.from}")
@@ -46,7 +48,6 @@ public class PedidoService {
     @Value("${app.upload.dir:uploads/comprobantes}")
     private String uploadDir;
 
-    // ── Guardar pedido con c
     @Transactional
     public PedidoOnline confirmarPedido(
             String correoCliente,
@@ -56,7 +57,6 @@ public class PedidoService {
         Cliente cliente = clienteRepository.findByCorreo(correoCliente)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
-        // Guardar comprobante
         String nombreArchivo = UUID.randomUUID() + "_" + comprobante.getOriginalFilename();
         Path ruta = Paths.get(uploadDir).toAbsolutePath().normalize();
         Files.createDirectories(ruta);
@@ -66,10 +66,12 @@ public class PedidoService {
         PedidoOnline pedido = new PedidoOnline();
         pedido.setCliente(cliente);
         pedido.setComprobantePago(nombreArchivo);
-        pedido.setEstado(1);
+        pedido.setEstado(1); // 1 = Pendiente de Verificación
 
         List<DetallePedido> detalles = new ArrayList<>();
         double total = 0;
+
+        pedido = pedidoRepository.save(pedido);
 
         for (Map<String, Object> item : itemsCarrito) {
             Long productoId = Long.parseLong(item.get("id").toString());
@@ -78,13 +80,10 @@ public class PedidoService {
             Producto producto = productoRepository.findById(productoId)
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-            // Validar stock
+            // Validamos stock en caliente por si acaso, pero NO lo descontamos aún
             if (producto.getStock() < cantidad)
-                throw new RuntimeException("Stock insuficiente para: " + producto.getNombre());
+                throw new RuntimeException("Stock insuficiente en tienda para: " + producto.getNombre());
 
-            // ── 🌟 EXTRACTOR CLAVE DEL PRECIO PROMOCIONAL ──
-            // Si el controlador nos calculó el precio promocional, lo usamos.
-            // Si por seguridad no existiera, recurre al precio base por defecto.
             double precioAplicado = producto.getPrecioVenta();
             if (item.containsKey("precio")) {
                 precioAplicado = Double.parseDouble(item.get("precio").toString());
@@ -96,57 +95,88 @@ public class PedidoService {
             detalle.setPedido(pedido);
             detalle.setProducto(producto);
             detalle.setCantidad(cantidad);
-            detalle.setPrecioUnitario(precioAplicado);     // ✅ Almacena S/ 18.00 reales en la tabla
-            detalle.setSubtotal(subtotalCalculado);       // ✅ Subtotal S/ 18.00
+            detalle.setPrecioUnitario(precioAplicado);
+            detalle.setSubtotal(subtotalCalculado);
             detalles.add(detalle);
 
             total += subtotalCalculado;
-
-            // Descontar stock
-            producto.setStock(producto.getStock() - cantidad);
-            productoRepository.save(producto);
         }
 
-        pedido.setTotal(total); // ✅ Registra la sumatoria del descuento total final
+        pedido.setTotal(total);
         pedido.setDetalles(detalles);
         pedidoRepository.save(pedido);
 
         return pedido;
     }
 
-    // ── Historial del cliente ─────────────────────────────
     public List<PedidoOnline> historialCliente(String correo) {
         Cliente cliente = clienteRepository.findByCorreo(correo)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
         return pedidoRepository.findByClienteOrderByFechaPedidoDesc(cliente);
     }
 
-    // ── Secretario: listar todos ──────────────────────────
     public List<PedidoOnline> listarTodos() {
         return pedidoRepository.findAllByOrderByFechaPedidoDesc();
     }
 
-    // ── Secretario: aceptar ───────────────────────────────
     @Transactional
     public void aceptarPedido(Long id) {
         PedidoOnline pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
-        pedido.setEstado(2);
+
+        // Evitamos procesar dos veces el mismo pedido
+        if (pedido.getEstado() == 2) {
+            throw new RuntimeException("Este pedido ya fue aceptado anteriormente.");
+        }
+
+        // Ejecutamos el descuento de inventario real artículo por artículo
+        for (DetallePedido d : pedido.getDetalles()) {
+            Producto producto = d.getProducto();
+
+            // Verificación final de stock antes de confirmar la salida física
+            if (producto.getStock() < d.getCantidad()) {
+                throw new RuntimeException(
+                        "No se puede aceptar el pedido. Stock insuficiente actual para: " + producto.getNombre());
+            }
+
+            // Restamos del catálogo
+            producto.setStock(producto.getStock() - d.getCantidad());
+            productoRepository.save(producto);
+
+            // ── 📦 REGISTRO AUTOMÁTICO EN EL KARDEX (SALIDA ONLINE CONFIRMADA) ──
+            HistorialInventario movimiento = new HistorialInventario();
+            movimiento.setProducto(producto);
+            movimiento.setTipoMovimiento("SALIDA");
+            movimiento.setCantidad(d.getCantidad());
+            movimiento.setStockResultante(producto.getStock());
+            movimiento.setMotivo("Venta Web - Aprobación Pedido #" + pedido.getId());
+            historialInventarioRepository.save(movimiento);
+        }
+
+        pedido.setEstado(2); // 2 = Aceptado / Listo para recoger
         pedidoRepository.save(pedido);
         enviarCorreo(pedido, true);
     }
 
-    // ── Secretario: rechazar ──────────────────────────────
     @Transactional
     public void rechazarPedido(Long id) {
         PedidoOnline pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
 
-        // Devolver stock
+        // Devolver stock al catálogo y registrar el reingreso en el Kardex
         for (DetallePedido d : pedido.getDetalles()) {
             Producto p = d.getProducto();
             p.setStock(p.getStock() + d.getCantidad());
             productoRepository.save(p);
+
+            // ── 📦 REGISTRO AUTOMÁTICO EN EL KARDEX (REINGRESO POR RECHAZO) ──
+            HistorialInventario movimiento = new HistorialInventario();
+            movimiento.setProducto(p);
+            movimiento.setTipoMovimiento("ENTRADA");
+            movimiento.setCantidad(d.getCantidad());
+            movimiento.setStockResultante(p.getStock());
+            movimiento.setMotivo("Devolución - Pedido #" + pedido.getId() + " Rechazado");
+            historialInventarioRepository.save(movimiento);
         }
 
         pedido.setEstado(0);
@@ -154,7 +184,6 @@ public class PedidoService {
         enviarCorreo(pedido, false);
     }
 
-    // ── Correo ────────────────────────────────────────────
     private void enviarCorreo(PedidoOnline pedido, boolean aceptado) {
         try {
             // ── PARCHE DE PRUEBAS PARA RAILWAY ──
@@ -254,7 +283,7 @@ public class PedidoService {
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
         if (pedido.getEstado() != 2)
             throw new RuntimeException("Este pedido no está en estado aceptado");
-        pedido.setEstado(3); // 3 = ENTREGADO
+        pedido.setEstado(3);
         pedidoRepository.save(pedido);
     }
 }

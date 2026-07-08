@@ -86,16 +86,10 @@ public class PromocionController {
             @RequestParam(required = false) Long id,
             @RequestParam(required = false) String nombre,
             @RequestParam(required = false) String descripcion,
-            @RequestParam(required = false) String tipoPromocion, // "SERVICIO" o "PRODUCTO"
-            @RequestParam(required = false) BigDecimal porcentajeDescuento, // 🛟 Cambiado a false para evitar Error 400
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio, // 🛟
-                                                                                                                           // Cambiado
-                                                                                                                           // a
-                                                                                                                           // false
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin, // 🛟
-                                                                                                                        // Cambiado
-                                                                                                                        // a
-                                                                                                                        // false
+            @RequestParam(required = false) String tipoPromocion, 
+            @RequestParam(required = false) BigDecimal porcentajeDescuento, 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio, 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin, 
             @RequestParam(defaultValue = "0") int minimoVisitasRequeridas,
             @RequestParam(required = false) Long servicioId,
             @RequestParam(required = false) Long productoId,
@@ -103,25 +97,53 @@ public class PromocionController {
             RedirectAttributes ra) {
 
         try {
-            // ── 1. VALIDACIÓN DE CAMPOS VACÍOS (Evita errores de Spring) ──
+            // 1. VALIDACIÓN DE CAMPOS VACÍOS
             if (nombre == null || nombre.trim().isEmpty() ||
                     descripcion == null || descripcion.trim().isEmpty() ||
                     tipoPromocion == null || tipoPromocion.trim().isEmpty() ||
                     porcentajeDescuento == null || fechaInicio == null || fechaFin == null) {
-
                 throw new RuntimeException("Todos los campos obligatorios deben ser completados.");
             }
 
-            // ── 2. VALIDACIÓN DE REGLA DE NEGOCIO: MÁXIMO 4 MESES VIGENCIA ──
+            // 2. CANDADO DE PORCENTAJES LÓGICOS
+            if (porcentajeDescuento.compareTo(BigDecimal.ONE) < 0 || porcentajeDescuento.compareTo(new BigDecimal("80")) > 0) {
+                throw new RuntimeException("El porcentaje de descuento debe estar entre 1% y 80%.");
+            }
+
             if (fechaInicio.isAfter(fechaFin)) {
                 throw new RuntimeException("La fecha de inicio no puede ser posterior a la fecha de fin.");
             }
 
-            if (fechaInicio.plusMonths(4).isBefore(fechaFin)) {
-                throw new RuntimeException("La vigencia máxima permitida para una promoción es de 4 meses.");
+            // ── 🛟 NUEVO CANDADO ANTIMULTIPLICIDAD: EVITAR SOLAPAMIENTO DE FECHAS ──
+            List<Promocion> todas = promocionRepository.findAll();
+            for (Promocion p : todas) {
+                // Si estamos editando la misma promoción, ignoramos la validación consigo misma
+                if (id != null && p.getId().equals(id)) {
+                    continue;
+                }
+
+                // Solo validamos si la promoción iterada está activa/vigente
+                if (p.isActivo() && p.getFechaFin().isAfter(LocalDateTime.now())) {
+                    
+                    boolean seCruza = (fechaInicio.isBefore(p.getFechaFin()) && fechaFin.isAfter(p.getFechaInicio()));
+
+                    if (seCruza) {
+                        if ("SERVICIO".equalsIgnoreCase(tipoPromocion) && p.getServicio() != null && p.getServicio().getId().equals(servicioId)) {
+                            throw new RuntimeException("El servicio '" + p.getServicio().getNombre() + "' ya cuenta con una promoción activa en ese rango de fechas.");
+                        }
+                        if ("PRODUCTO".equalsIgnoreCase(tipoPromocion)) {
+                            if (productoId != null && p.getProducto() != null && p.getProducto().getId().equals(productoId)) {
+                                throw new RuntimeException("El producto '" + p.getProducto().getNombre() + "' ya tiene una promoción activa en ese rango de fechas.");
+                            }
+                            if (categoriaId != null && p.getCategoria() != null && p.getCategoria().getId().equals(categoriaId)) {
+                                throw new RuntimeException("La categoría seleccionada ya tiene una promoción activa en ese rango de fechas.");
+                            }
+                        }
+                    }
+                }
             }
 
-            // Lógica existente de persistencia
+            // Lógica de persistencia existente
             Promocion promo;
             if (id != null) {
                 promo = promocionRepository.findById(id)
@@ -138,14 +160,13 @@ public class PromocionController {
             promo.setFechaFin(fechaFin);
             promo.setMinimoVisitasRequeridas(minimoVisitasRequeridas);
 
-            // Asignar relaciones según el tipo de promoción
             if ("SERVICIO".equalsIgnoreCase(tipoPromocion)) {
                 if (servicioId != null) {
                     promo.setServicio(servicioRepository.findById(servicioId).orElse(null));
                 }
                 promo.setProducto(null);
                 promo.setCategoria(null);
-            } else { // "PRODUCTO"
+            } else { 
                 if (productoId != null) {
                     promo.setProducto(productoRepository.findById(productoId).orElse(null));
                     promo.setCategoria(null);

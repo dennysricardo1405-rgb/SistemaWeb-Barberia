@@ -22,6 +22,7 @@ import com.example.BarberiaLaClasica.model.NotaVenta;
 import com.example.BarberiaLaClasica.model.Producto;
 import com.example.BarberiaLaClasica.model.Servicio;
 import com.example.BarberiaLaClasica.model.SillaSession;
+import com.example.BarberiaLaClasica.model.HistorialInventario; // ← Agregamos la entidad del Kardex
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
 import com.example.BarberiaLaClasica.repository.CitaRepository;
 import com.example.BarberiaLaClasica.repository.ClienteRepository;
@@ -30,6 +31,7 @@ import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
 import com.example.BarberiaLaClasica.repository.SillaSessionRepository;
+import com.example.BarberiaLaClasica.repository.HistorialInventarioRepository; // ← Agregamos el repositorio del Kardex
 
 @Service
 public class RecepcionService {
@@ -52,6 +54,8 @@ public class RecepcionService {
     private NotaVentaRepository notaVentaRepository;
     @Autowired
     private PromocionHelper promocionHelper;
+    @Autowired
+    private HistorialInventarioRepository historialInventarioRepository; // ← Inyectamos el Kardex aquí
 
     // ── Cita de reserva confirmada para hoy de un barbero ─────────────────────
     public Optional<Cita> getCitaReservaHoy(Long barberoId) {
@@ -72,20 +76,17 @@ public class RecepcionService {
     // ── Listar todas las notas (mantener compatibilidad) ─────────────────────
     public List<NotaVenta> listarNotas() {
         Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by("fecha").descending());
-        // ✅ Cambiado a .findAll(pageable)
         return notaVentaRepository.findAll(pageable).getContent();
     }
 
     // ── NUEVO: Listar notas con paginación ────────────────────────────────
     public Page<NotaVenta> listarNotasPaginadas(Pageable pageable) {
-        // ✅ Cambiado a .findAll(pageable)
         return notaVentaRepository.findAll(pageable);
     }
 
     // ── Reservas Web para Hoy con Paginación (CORREGIDO) ─────────────────────
     public Page<Cita> listarReservasHoyPaginadas(Pageable pageable) {
         LocalDate hoy = LocalDate.now();
-        // Estado 2 = Confirmada (cambia el número si tu estado confirmado es diferente)
         return citaRepository.findByFechaAndEstadoOrderByHoraInicioAsc(hoy, 2, pageable);
     }
 
@@ -113,7 +114,6 @@ public class RecepcionService {
     // ── Abrir sesión WALK-IN ─────────────────────────────────────────────────
     @Transactional
     public void ocuparSillaWalkin(Long barberoId, Long clienteId, Long servicioId) {
-        // Solo bloquear si la reserva es en los próximos 30 minutos
         getCitaReservaHoy(barberoId).ifPresent(cita -> {
             LocalTime ahora = LocalTime.now();
             LocalTime horaRes = cita.getHoraInicio();
@@ -205,15 +205,12 @@ public class RecepcionService {
 
         // ── 1. CONDICIONAL DE PROMOCIÓN PARA EL SERVICIO ──────────────────
         double precioServicioOriginal = session.getServicio().getPrecio().doubleValue();
-        double precioServicioFinal = precioServicioOriginal; // Tarifa normal por defecto (S/ 35.00)
+        double precioServicioFinal = precioServicioOriginal;
 
-        // Verificamos si la sesión cuenta con una reserva web legítima y activa
         if (session.getCita() != null && session.getCita().getId() != null) {
             Cita cita = session.getCita();
-            // Si tiene un anticipo web mayor a cero, confirmamos que es una cita reservada
-            // por la web
             if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
-                precioServicioFinal = promocionHelper.calcularPrecioServicio(session.getServicio()); // Aplica S/ 17.50
+                precioServicioFinal = promocionHelper.calcularPrecioServicio(session.getServicio());
             }
         }
 
@@ -229,9 +226,8 @@ public class RecepcionService {
         // ── 2. CONDICIONAL DE PROMOCIÓN PARA PRODUCTOS ────────────────────
         for (ConsumoSilla c : consumos) {
             double precioProductoOriginal = c.getProducto().getPrecioVenta();
-            double precioProductoFinal = precioProductoOriginal; // Tarifa normal por defecto
+            double precioProductoFinal = precioProductoOriginal;
 
-            // Si es cliente de reserva web, sus productos también pueden evaluar promoción
             if (session.getCita() != null && session.getCita().getId() != null) {
                 Cita cita = session.getCita();
                 if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
@@ -254,6 +250,17 @@ public class RecepcionService {
             Producto p = c.getProducto();
             p.setStock(p.getStock() - c.getCantidad());
             productoRepository.save(p);
+
+            // ── 📦 REGISTRO AUTOMÁTICO EN EL KARDEX (SALIDA DE PRODUCTO) ──
+            HistorialInventario movimiento = new HistorialInventario();
+            movimiento.setProducto(p);
+            movimiento.setTipoMovimiento("SALIDA");
+            movimiento.setCantidad(c.getCantidad());
+            movimiento.setStockResultante(p.getStock()); // Registra el stock exacto que queda en el almacén
+            movimiento.setMotivo("Venta en Caja - Atendido por Barbero: " + 
+                    (session.getBarbero() != null ? session.getBarbero().getNombre() : "General"));
+            
+            historialInventarioRepository.save(movimiento);
         }
 
         // ── 3. Cálculo Final de Totales ───────────────────────────────────
@@ -267,7 +274,7 @@ public class RecepcionService {
             nota.setMontoEfectivo(0.0);
             nota.setMontoYape(total);
             nota.setCodigoYape(codigoYape);
-        } else { // Caso "MIXTO"
+        } else {
             nota.setMontoYape(montoYape);
             nota.setMontoEfectivo(Math.max(0, total - montoYape));
             nota.setCodigoYape(codigoYape);
@@ -278,15 +285,15 @@ public class RecepcionService {
 
         // ── 4. Actualización de Cita y Sesión ──────────────────────────────
         if (session.getCita() != null) {
-            session.getCita().setEstado(3); // Finalizada / Atendida
+            session.getCita().setEstado(3);
             citaRepository.save(session.getCita());
         }
 
-        session.setEstado(0); // Cerrar silla
+        session.setEstado(0);
         sessionRepository.save(session);
 
         Barbero barbero = session.getBarbero();
-        barbero.setEstado(1); // Barbero Disponible
+        barbero.setEstado(1);
         barberoRepository.save(barbero);
 
         return nota;
