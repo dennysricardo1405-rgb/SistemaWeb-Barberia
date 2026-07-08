@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Entity
 @Table(name = "productos")
-@Data // Genera getters, setters, toString, etc.
+@Data 
 public class Producto {
 
     @Id
@@ -17,17 +17,15 @@ public class Producto {
 
     private String descripcion;
     
-    private String imagen; // Guardará la ruta o nombre del archivo de la foto (Ej: "shampoo.jpg")
+    private String imagen; 
     
     @Column(nullable = false)
     private double precioVenta;
 
-    // Inicializa en 0 como especificaste en tus requerimientos
     private int stock = 0; 
 
     private boolean activo = true;
 
-    // Relación con Categoría: Un producto pertenece a una categoría o subcategoría
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;

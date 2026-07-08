@@ -1,8 +1,10 @@
 package com.example.BarberiaLaClasica.service;
 
 import com.example.BarberiaLaClasica.model.CompraProveedor;
+import com.example.BarberiaLaClasica.model.HistorialInventario;
 import com.example.BarberiaLaClasica.model.Producto;
 import com.example.BarberiaLaClasica.repository.CompraProveedorRepository;
+import com.example.BarberiaLaClasica.repository.HistorialInventarioRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,9 @@ public class ProductoService {
 
     @Autowired
     private CompraProveedorRepository compraProveedorRepository;
+
+    @Autowired
+    private HistorialInventarioRepository historialInventarioRepository;
 
     public List<Producto> listarTodos() {
         return productoRepository.findAll();
@@ -48,14 +53,11 @@ public class ProductoService {
         return productoRepository.findByStockLessThanEqualAndActivoTrue(3);
     }
 
-    // Lógica de Stock por Compra (Escenarios 1 y 2)
     @Transactional
     public void registrarCompra(CompraProveedor compra) {
-        // 1. Buscamos el producto real
         Producto producto = productoRepository.findById(compra.getProducto().getId())
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-        // 2. Calculamos las unidades a incrementar
         int stockAIncrementar = 0;
         if ("PAQUETE".equals(compra.getTipoCompra().name())) {
             stockAIncrementar = compra.getCantidadPaquetes() * compra.getUnidadesPorPaquete();
@@ -63,17 +65,24 @@ public class ProductoService {
             stockAIncrementar = compra.getCantidadPaquetes();
         }
 
-        // 3. Seteamos los totales de la compra
         compra.setTotalUnidades(stockAIncrementar);
         compra.setTotalInvertido(compra.getCantidadPaquetes() * compra.getPrecioCompraPaquete());
 
-        // 4. Actualizamos el catálogo
         producto.setStock(producto.getStock() + stockAIncrementar);
         producto.setPrecioVenta(compra.getPrecioVentaUnidad());
 
-        // 5. Guardamos todo con normalidad
         productoRepository.save(producto);
-        compraProveedorRepository.save(compra); // MySQL no chillará porque el ID nunca será null
+        CompraProveedor compraGuardada = compraProveedorRepository.save(compra);
+
+        HistorialInventario movimiento = new HistorialInventario();
+        movimiento.setProducto(producto);
+        movimiento.setTipoMovimiento("ENTRADA");
+        movimiento.setCantidad(stockAIncrementar);
+        movimiento.setStockResultante(producto.getStock());
+        movimiento.setMotivo("Abastecimiento - Proveedor: " + 
+                (compraGuardada.getProveedor() != null ? compraGuardada.getProveedor().getNombre() : "Compra Directa"));
+        
+        historialInventarioRepository.save(movimiento);
     }
     
 }

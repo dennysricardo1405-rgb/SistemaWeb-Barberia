@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputInicio = document.getElementById("promoInicio");
     const inputFin = document.getElementById("promoFin");
     const form = document.getElementById("promoForm");
-    
+
     const buscador = document.getElementById("buscadorModalProd");
     const itemsProductos = document.querySelectorAll(".item-prod-modal");
     const inputHiddenId = document.getElementById("promoProductoId");
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── 2. FILTRO DINÁMICO DEL BUSCADOR DEL MODAL ──
     if (buscador) {
-        buscador.addEventListener("input", function() {
+        buscador.addEventListener("input", function () {
             const termino = this.value.toLowerCase().trim();
             itemsProductos.forEach(item => {
                 const nombre = item.dataset.nombre.toLowerCase();
@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Asignamos los valores a los inputs del formulario
             if (inputHiddenId) inputHiddenId.value = id;
-            if (inputTextoVisible) inputTextoVisible.value = `${nombre} (S/ ${precio}) - [Stock: ${stock}]`;
+            if (inputTextoVisible) inputTextoVisible.value = `${nombre} (S/ ${precio})`;
 
             // Cerramos el modal de forma limpia usando la API de Bootstrap
             const modalElement = document.getElementById('modalBuscarProducto');
@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.getElementById("promoCategoriaId").value = categoriaId;
                 } else {
                     selectAlcance.value = "ESPECIFICO";
-                    
+
                     // Cargamos el texto estético en el input del modal
                     const itemCorrespondiente = document.querySelector(`.item-prod-modal[data-id="${productoId}"]`);
                     if (itemCorrespondiente && inputHiddenId && inputTextoVisible) {
@@ -170,4 +170,29 @@ function limpiarFormulario() {
     document.getElementById("errorDescuento").style.display = "none";
     document.getElementById("promoPorcentaje").classList.remove("is-invalid");
     alternarCamposFlujo();
+}
+function abrirModalEliminar(urlUrl) {
+    document.getElementById('btnConfirmarEliminarHref').setAttribute('href', urlUrl);
+    var myModal = new bootstrap.Modal(document.getElementById('modalConfirmarEliminar'));
+    myModal.show();
+}
+function validarPorcentajeEntrada(input) {
+    // 1. Eliminamos cualquier signo negativo o caracteres no numéricos por si pegan texto
+    input.value = input.value.replace(/[^0-9]/g, '');
+
+    const errorDiv = document.getElementById('errorDescuentoHTML');
+    const valor = parseInt(input.value, 10);
+
+    // 2. Si el usuario escribe un monto superior a 80, lo frenamos en seco
+    if (valor > 80) {
+        input.value = 80;
+        if (errorDiv) errorDiv.style.display = 'block';
+    } else {
+        if (errorDiv) errorDiv.style.display = 'none';
+    }
+
+    // 3. Evitamos que se quede en vacío o en 0 al perder el foco si deseas un mínimo de 1
+    if (input.value !== '' && valor < 1) {
+        input.value = 1;
+    }
 }
