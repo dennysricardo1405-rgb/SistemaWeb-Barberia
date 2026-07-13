@@ -46,4 +46,7 @@ public class NotaVenta {
  
     @Column(name = "codigo_yape", length = 20)
     private String codigoYape;
+    public java.time.LocalDateTime getFecha() {
+    return this.fecha;
+}
 }

@@ -16,6 +16,9 @@ import com.example.BarberiaLaClasica.model.Usuario;
 import com.example.BarberiaLaClasica.repository.BarberoRepository;
 import com.example.BarberiaLaClasica.repository.CategoriaRepository;
 import com.example.BarberiaLaClasica.repository.ClienteRepository;
+import com.example.BarberiaLaClasica.repository.DetalleNotaVentaRepository;
+import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
+import com.example.BarberiaLaClasica.repository.PedidoOnlineRepository;
 import com.example.BarberiaLaClasica.repository.PerfilRepository;
 import com.example.BarberiaLaClasica.repository.ProductoRepository;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
@@ -27,6 +30,7 @@ import com.example.BarberiaLaClasica.service.PromocionService;
 import com.example.BarberiaLaClasica.service.SliderImageService;
 import com.example.BarberiaLaClasica.service.UsuarioService;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +64,12 @@ public class NavigationController {
     private ConfiguracionSitioService configuracionSitioService;
     @Autowired
     private PromocionHelper promocionHelper;
-
+    @Autowired
+    private NotaVentaRepository notaVentaRepository;
+    @Autowired
+    private DetalleNotaVentaRepository detalleNotaVentaRepository;
+    @Autowired
+    private PedidoOnlineRepository pedidoOnlineRepository;
     @GetMapping("/")
     public String index(Model model) {
         List<Producto> productosWeb = productoRepository.findByActivoTrue();
@@ -83,12 +92,41 @@ public class NavigationController {
     @GetMapping("/admin/dashboard")
     public String dashboard(Model model, Authentication authentication) {
         model.addAttribute("usuarioNombre", authentication.getName());
+
+        // 1. Contadores básicos de personal y clientes
         long totalBarberos = barberoRepository.count();
         long totalClientes = clienteRepository.count();
         model.addAttribute("totalBarberos", totalBarberos);
         model.addAttribute("totalClientes", totalClientes);
-        model.addAttribute("citasHoy", 0);
-        model.addAttribute("ingresosMes", "0.00");
+
+        // 2. Conteo dinámico de existencias en peligro (Límite <= 2 unidades)
+        long stockBajo = productoRepository.countByStockLessThanEqual(2);
+        model.addAttribute("productosStockBajo", stockBajo);
+
+        // 3. Cálculo de Ingresos Totales acumulados del mes corriente
+        LocalDate inicioMes = LocalDate.now().withDayOfMonth(1);
+        LocalDate finMes = LocalDate.now();
+
+        // Extraemos todas las notas de venta del mes para totalizar la recaudación
+        double ingresosPresencial = detalleNotaVentaRepository
+                .findByFechaBetween(inicioMes.atStartOfDay(), LocalDate.now().atTime(23, 59, 59)).stream()
+                .mapToDouble(d -> d.getSubtotal())
+                .sum();
+
+        // 2. Sumar los pedidos online (Web) aceptados del mes
+        double ingresosWeb = pedidoOnlineRepository.findAll().stream()
+                .filter(p -> (p.getEstado() == 2 || p.getEstado() == 3) && p.getFechaPedido() != null)
+                .filter(p -> !p.getFechaPedido().toLocalDate().isBefore(inicioMes)
+                        && !p.getFechaPedido().toLocalDate().isAfter(finMes))
+                .mapToDouble(p -> p.getTotal())
+                .sum();
+
+        double totalMensual = ingresosPresencial + ingresosWeb;
+        model.addAttribute("ingresosMes", String.format("%.2f", totalMensual));
+
+        model.addAttribute("ingresosMes", String.format("%.2f", totalMensual));
+        model.addAttribute("citasHoy", 0); // Mantener temporalmente en 0 si aún no tienes el flujo de citas del día
+
         return "admin-dashboard";
     }
 
