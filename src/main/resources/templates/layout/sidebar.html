@@ -37,7 +37,8 @@
             </a>
 
             <!-- CLIENTES -->
-            <a th:href="${#authorization.expression('hasRole(''ROLE_ADMINISTRADOR'')')} ? '/admin/cliente' : '/secretario/cliente'"
+            <a th:if="${#authorization.expression('hasAuthority(''GESTION_CLIENTES'')')}"
+                th:href="${#authorization.expression('hasRole(''ADMINISTRADOR'')')} ? '/admin/cliente' : '/secretario/cliente'"
                 class="nav-link" th:classappend="${activePage == 'clientes' ? ' active' : ''}">
                 <i class="fa-solid fa-users me-2"></i> Clientes
             </a>
