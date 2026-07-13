@@ -102,4 +102,10 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
                         int estado,
                         Pageable pageable);
 
+       @Query("SELECT c FROM Cita c LEFT JOIN FETCH c.cliente WHERE c.estado = :estado AND c.fecha BETWEEN :inicio AND :fin")
+List<Cita> findByEstadoAndFechaBetween(
+    @Param("estado") int estado, 
+    @Param("inicio") LocalDate inicio, 
+    @Param("fin") LocalDate fin
+);
 }

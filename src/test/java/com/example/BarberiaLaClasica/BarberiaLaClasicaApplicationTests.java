@@ -1,10 +1,10 @@
-package com.example.OpticaPrecisa;
+package com.example.BarberiaLaClasica;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class OpticaPrecisaApplicationTests {
+class BarberiaLaClasicaApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -17,4 +17,5 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
        "LEFT JOIN FETCH c.padre pad " +
        "WHERE p.activo = true AND (c.nombre = :nombreCat OR pad.nombre = :nombreCat)")
 List<Producto> findProductosParaCatalogoPublico(@Param("nombreCat") String nombreCat);
+long countByStockLessThanEqual(int limite);
 }
