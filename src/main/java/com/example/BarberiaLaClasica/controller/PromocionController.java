@@ -105,16 +105,32 @@ public class PromocionController {
                 throw new RuntimeException("Todos los campos obligatorios deben ser completados.");
             }
 
-            // 2. CANDADO DE PORCENTAJES LÓGICOS
+            // 2. VALIDACIÓN DE SELECCIÓN DE OBJETIVO (SERVICIO / PRODUCTO / CATEGORÍA)
+            if ("SERVICIO".equalsIgnoreCase(tipoPromocion)) {
+                if (servicioId == null) {
+                    throw new RuntimeException("Debe seleccionar un servicio válido para aplicar la promoción.");
+                }
+            } else if ("PRODUCTO".equalsIgnoreCase(tipoPromocion)) {
+                if (productoId == null && categoriaId == null) {
+                    throw new RuntimeException("Debe seleccionar un producto específico o una categoría para aplicar la promoción.");
+                }
+            }
+
+            // 3. CANDADO DE PORCENTAJES LÓGICOS
             if (porcentajeDescuento.compareTo(BigDecimal.ONE) < 0 || porcentajeDescuento.compareTo(new BigDecimal("80")) > 0) {
                 throw new RuntimeException("El porcentaje de descuento debe estar entre 1% y 80%.");
             }
 
-            if (fechaInicio.isAfter(fechaFin)) {
-                throw new RuntimeException("La fecha de inicio no puede ser posterior a la fecha de fin.");
+            // 4. VALIDACIÓN DE FECHAS
+            if (!fechaFin.isAfter(fechaInicio)) {
+                throw new RuntimeException("La fecha de fin debe ser posterior a la fecha de inicio.");
             }
 
-            // ── 🛟 NUEVO CANDADO ANTIMULTIPLICIDAD: EVITAR SOLAPAMIENTO DE FECHAS ──
+            if (fechaFin.isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("La fecha de fin no puede ser una fecha o tiempo pasado.");
+            }
+
+            // ── 🛟 CANDADO ANTIMULTIPLICIDAD: EVITAR SOLAPAMIENTO DE FECHAS ──
             List<Promocion> todas = promocionRepository.findAll();
             for (Promocion p : todas) {
                 // Si estamos editando la misma promoción, ignoramos la validación consigo misma
@@ -158,20 +174,21 @@ public class PromocionController {
             promo.setPorcentajeDescuento(porcentajeDescuento);
             promo.setFechaInicio(fechaInicio);
             promo.setFechaFin(fechaFin);
-            promo.setMinimoVisitasRequeridas(minimoVisitasRequeridas);
+            promo.setMinimoVisitasRequeridas("PRODUCTO".equalsIgnoreCase(tipoPromocion) ? 0 : minimoVisitasRequeridas);
 
             if ("SERVICIO".equalsIgnoreCase(tipoPromocion)) {
-                if (servicioId != null) {
-                    promo.setServicio(servicioRepository.findById(servicioId).orElse(null));
-                }
+                promo.setServicio(servicioRepository.findById(servicioId)
+                        .orElseThrow(() -> new RuntimeException("Servicio seleccionado no encontrado")));
                 promo.setProducto(null);
                 promo.setCategoria(null);
             } else { 
                 if (productoId != null) {
-                    promo.setProducto(productoRepository.findById(productoId).orElse(null));
+                    promo.setProducto(productoRepository.findById(productoId)
+                            .orElseThrow(() -> new RuntimeException("Producto seleccionado no encontrado")));
                     promo.setCategoria(null);
                 } else if (categoriaId != null) {
-                    promo.setCategoria(categoriaRepository.findById(categoriaId).orElse(null));
+                    promo.setCategoria(categoriaRepository.findById(categoriaId)
+                            .orElseThrow(() -> new RuntimeException("Categoría seleccionada no encontrada")));
                     promo.setProducto(null);
                 }
                 promo.setServicio(null);

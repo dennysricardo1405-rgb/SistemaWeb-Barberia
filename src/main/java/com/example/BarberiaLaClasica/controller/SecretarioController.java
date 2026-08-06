@@ -8,6 +8,10 @@ import com.example.BarberiaLaClasica.service.PromocionHelper;
 import com.example.BarberiaLaClasica.service.RecepcionService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,11 +57,27 @@ public class SecretarioController {
 
     // 1. Listar Clientes
     @GetMapping("/cliente")
-    public String listarClientesParaSecretario(Model model) {
-        model.addAttribute("clientes", clienteService.listarTodos());
+    public String listarClientesParaSecretario(Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fechaRegistro").descending());
+        Page<Cliente> clientesPage = clienteService.listarTodosPaginado(pageable, search);
+
+        for (Cliente c : clientesPage.getContent()) {
+            c.setTotalVisitas(clienteService.calcularTotalVisitas(c));
+        }
+
+        model.addAttribute("clientesPage", clientesPage);
+        model.addAttribute("clientes", clientesPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", clientesPage.getTotalPages());
+        model.addAttribute("totalItems", clientesPage.getTotalElements());
+        model.addAttribute("size", size);
+        model.addAttribute("search", search);
         model.addAttribute("cliente", new Cliente()); // Thymeleaf requiere el objeto vacío para el modal de crear
 
-        // USAMOS TU RUTA EXACTA DE PLANTILLA CORREGIDA 🎯
         return "cliente/clientes-lista";
     }
 
@@ -84,10 +104,65 @@ public class SecretarioController {
         return "redirect:/secretario/cliente";
     }
 
+    // 4. Actualizar Cliente desde el Secretario
+    @PostMapping("/cliente/actualizar/{id}")
+    public String actualizarClienteDesdeSecretario(@PathVariable Long id,
+            @ModelAttribute Cliente cliente,
+            @RequestParam(value = "nuevaPassword", required = false) String nuevaPassword,
+            org.springframework.web.servlet.mvc.support.RedirectAttributes ra) {
+        try {
+            String telefono = cliente.getTelefono() != null ? cliente.getTelefono().trim() : "";
+            String correo   = cliente.getCorreo()   != null ? cliente.getCorreo().trim()   : "";
+
+            if (!telefono.isEmpty() && !telefono.matches("^\\d{9}$")) {
+                ra.addFlashAttribute("error", "El teléfono debe tener exactamente 9 dígitos.");
+                return "redirect:/secretario/cliente";
+            }
+            if (!correo.isEmpty() && !correo.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                ra.addFlashAttribute("error", "El correo electrónico no es válido.");
+                return "redirect:/secretario/cliente";
+            }
+
+            if (nuevaPassword != null && !nuevaPassword.trim().isEmpty()) {
+                String pwd = nuevaPassword.trim();
+                if (pwd.length() < 6) {
+                    ra.addFlashAttribute("error", "La contraseña debe tener al menos 6 caracteres.");
+                    return "redirect:/secretario/cliente";
+                }
+                if (pwd.length() > 30) {
+                    ra.addFlashAttribute("error", "La contraseña no puede superar 30 caracteres.");
+                    return "redirect:/secretario/cliente";
+                }
+            }
+
+            cliente.setTelefono(telefono.isEmpty() ? null : telefono);
+            cliente.setCorreo(correo.isEmpty() ? null : correo);
+
+            clienteService.actualizarDesdeAdmin(id, cliente, nuevaPassword);
+            ra.addFlashAttribute("exito", "Datos del cliente actualizados con éxito.");
+
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", "Error al actualizar: " + e.getMessage());
+        }
+        return "redirect:/secretario/cliente";
+    }
+
     @GetMapping("/citas")
     public String gestionCitas(Model model) {
-        model.addAttribute("citasPendientes", citaService.listarPendientes());
-        model.addAttribute("citasHoy", citaService.listarCitasDeHoy());
+        List<Cita> pendientes = citaService.listarPendientes();
+        for (Cita c : pendientes) {
+            if (c.getCliente() != null) {
+                c.getCliente().setTotalVisitas(clienteService.calcularTotalVisitas(c.getCliente()));
+            }
+        }
+        List<Cita> hoy = citaService.listarCitasDeHoy();
+        for (Cita c : hoy) {
+            if (c.getCliente() != null) {
+                c.getCliente().setTotalVisitas(clienteService.calcularTotalVisitas(c.getCliente()));
+            }
+        }
+        model.addAttribute("citasPendientes", pendientes);
+        model.addAttribute("citasHoy", hoy);
         model.addAttribute("promoHelper", promocionHelper);
         return "secretario/citas-gestion";
     }

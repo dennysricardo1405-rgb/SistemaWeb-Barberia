@@ -36,15 +36,25 @@ public class CitaReservaController {
     @Autowired
     private ClienteRepository clienteRepository;
     @Autowired
-    private PromocionHelper promocionHelper;
+    private com.example.BarberiaLaClasica.service.ClienteService clienteService;
     @Autowired
-    private ConfiguracionSitioService configuracionSitioService;
+    private PromocionHelper promocionHelper;
+
     // ─────────────────────────────────────────────────────────────────
     // PASO 1-3: Asistente público (sin login requerido)
     // ─────────────────────────────────────────────────────────────────
 
     @GetMapping("/reservar")
-    public String verAsistenteReserva(Model model) {
+    public String verAsistenteReserva(Model model, Principal principal) {
+        com.example.BarberiaLaClasica.model.Cliente clienteLogueado = null;
+        if (principal != null) {
+            clienteLogueado = clienteRepository.findByCorreo(principal.getName()).orElse(null);
+            if (clienteLogueado != null) {
+                clienteLogueado.setTotalVisitas(clienteService.calcularTotalVisitas(clienteLogueado));
+            }
+        }
+
+        model.addAttribute("clienteLogueado", clienteLogueado);
         model.addAttribute("servicios", servicioRepository.findByEstado(1));
         model.addAttribute("barberos", barberoRepository.findByEstado(1));
         model.addAttribute("promoHelper", promocionHelper);
@@ -133,21 +143,24 @@ public class CitaReservaController {
 
         // ── VALIDACIÓN TEMPRANA: bloquea antes de mostrar el pago ────────
         String correo = principal.getName();
-        clienteRepository.findByCorreo(correo).ifPresent(cliente -> {
-            long activas = citaRepository.contarReservasActivasPorCliente(cliente.getId());
+        com.example.BarberiaLaClasica.model.Cliente clienteLogueado = clienteRepository.findByCorreo(correo).orElse(null);
+
+        if (clienteLogueado != null) {
+            clienteLogueado.setTotalVisitas(clienteService.calcularTotalVisitas(clienteLogueado));
+            long activas = citaRepository.contarReservasActivasPorCliente(clienteLogueado.getId());
             if (activas >= 1) {
                 model.addAttribute("errorReserva",
                         "Ya tienes una reserva activa. Espera a ser atendido antes de hacer una nueva.");
             }
-        });
+        }
 
         // ── CÁLCULO DE PROMOCIONES VINCULADAS ───────────────────────────
         servicioRepository.findById(servicioId).ifPresent(s -> {
             model.addAttribute("servicio", s);
 
-            // Calculamos el precio real considerando si tiene una oferta activa
-            double precioFinal = promocionHelper.calcularPrecioServicio(s);
-            model.addAttribute("precioFinalServicio", precioFinal); // ◄ ¡Esto soluciona el Error 500!
+            // Calculamos el precio real evaluando si aplica oferta según visitas y uso único por cliente
+            double precioFinal = promocionHelper.calcularPrecioServicio(s, clienteLogueado);
+            model.addAttribute("precioFinalServicio", precioFinal);
         });
 
         barberoRepository.findById(barberoId).ifPresent(b -> model.addAttribute("barbero", b));
@@ -190,7 +203,7 @@ public class CitaReservaController {
 
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());
-            return "reserva/reserva-pago";
+            return pantallaPago(session, model, principal);
         }
     }
 

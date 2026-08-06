@@ -16,7 +16,20 @@ public class ClienteService {
     private ClienteRepository clienteRepository;
 
     @Autowired
+    private com.example.BarberiaLaClasica.repository.NotaVentaRepository notaVentaRepository;
+
+    @Autowired
+    private com.example.BarberiaLaClasica.repository.CitaRepository citaRepository;
+
+    @Autowired
     private BCryptPasswordEncoder passwordEncoder;
+
+    public int calcularTotalVisitas(Cliente c) {
+        if (c == null || c.getId() == null) return 0;
+        long notas = notaVentaRepository.countByCliente(c);
+        long citasCompletadas = citaRepository.countByClienteAndEstadoIn(c, List.of(2, 3));
+        return (int) Math.max(notas, citasCompletadas);
+    }
 
     public List<Cliente> listarTodos() {
         return clienteRepository.findAll();

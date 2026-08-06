@@ -41,7 +41,8 @@ public class ReporteController {
                         @RequestParam(name = "metodoPago", required = false, defaultValue = "TODOS") String metodoPago,
                         Model model) {
 
-                // Inicializamos acumuladores de KPIs en cero (Incluidos los nuevos de Ingresos/Egresos)
+                // Inicializamos acumuladores de KPIs en cero (Incluidos los nuevos de
+                // Ingresos/Egresos)
                 double totalEfectivo = 0.0;
                 double totalYape = 0.0;
                 double totalMixto = 0.0;
@@ -116,8 +117,9 @@ public class ReporteController {
                                         }
                                 }
 
-                        } else if ("PRODUCTOS".equals(tipoOperacion)) { 
-                                // Nota: Asumí que el bloque original manejaba "PRODUCTOS", se ajusta la condición lógica limpia.
+                        } else if ("PRODUCTOS".equals(tipoOperacion)) {
+                                // Nota: Asumí que el bloque original manejaba "PRODUCTOS", se ajusta la
+                                // condición lógica limpia.
                                 if ("TODOS".equals(origen) || "PRESENCIAL".equals(origen)) {
 
                                         LocalDateTime inicioDT = inicio.atStartOfDay();
@@ -129,7 +131,8 @@ public class ReporteController {
                                         for (DetalleNotaVenta detalle : detallesProducto) {
                                                 NotaVenta nota = detalle.getNotaVenta();
                                                 double subtotalItem = detalle.getSubtotal();
-                                                String mPago = nota.getMetodoPago() != null ? nota.getMetodoPago() : "EFECTIVO";
+                                                String mPago = nota.getMetodoPago() != null ? nota.getMetodoPago()
+                                                                : "EFECTIVO";
 
                                                 boolean pasaFiltroPago = false;
                                                 if ("TODOS".equals(metodoPago))
@@ -220,7 +223,8 @@ public class ReporteController {
                                 List<Map<String, Object>> movimientos = new ArrayList<>();
 
                                 // ── INGRESOS: Servicios y Productos vendidos presencialmente ──
-                                List<DetalleNotaVenta> todosDetalles = detalleNotaVentaRepository.findByFechaBetween(inicioDT, finDT);
+                                List<DetalleNotaVenta> todosDetalles = detalleNotaVentaRepository
+                                                .findByFechaBetween(inicioDT, finDT);
                                 for (DetalleNotaVenta detalle : todosDetalles) {
                                         NotaVenta nota = detalle.getNotaVenta();
                                         double subtotalItem = detalle.getSubtotal();
@@ -228,11 +232,16 @@ public class ReporteController {
                                         Map<String, Object> mov = new HashMap<>();
                                         mov.put("fechaOrden", nota.getFecha());
                                         mov.put("fecha", nota.getFecha() != null
-                                                        ? nota.getFecha().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                                                        ? nota.getFecha()
+                                                                        .format(java.time.format.DateTimeFormatter
+                                                                                        .ofPattern("dd/MM/yyyy HH:mm"))
                                                         : "---");
                                         mov.put("tipoMovimiento", "INGRESO");
-                                        mov.put("categoria", "SERVICIO".equals(detalle.getTipo()) ? "Servicio (Presencial)" : "Producto (Presencial)");
-                                        mov.put("descripcion", detalle.getDescripcion() + " (x" + detalle.getCantidad() + ")");
+                                        mov.put("categoria",
+                                                        "SERVICIO".equals(detalle.getTipo()) ? "Servicio (Presencial)"
+                                                                        : "Producto (Presencial)");
+                                        mov.put("descripcion",
+                                                        detalle.getDescripcion() + " (x" + detalle.getCantidad() + ")");
                                         mov.put("monto", subtotalItem);
                                         movimientos.add(mov);
 
@@ -243,15 +252,20 @@ public class ReporteController {
                                 List<PedidoOnline> pedidosWeb = pedidoOnlineRepository.findAll();
                                 for (PedidoOnline pOnline : pedidosWeb) {
                                         if (pOnline.getEstado() == 2 || pOnline.getEstado() == 3) {
-                                                LocalDate fechaPedido = pOnline.getFechaPedido() != null ? pOnline.getFechaPedido().toLocalDate() : null;
-                                                if (fechaPedido == null || fechaPedido.isBefore(inicio) || fechaPedido.isAfter(fin)) {
+                                                LocalDate fechaPedido = pOnline.getFechaPedido() != null
+                                                                ? pOnline.getFechaPedido().toLocalDate()
+                                                                : null;
+                                                if (fechaPedido == null || fechaPedido.isBefore(inicio)
+                                                                || fechaPedido.isAfter(fin)) {
                                                         continue;
                                                 }
                                                 double totalPedido = pOnline.getTotal();
 
                                                 Map<String, Object> mov = new HashMap<>();
                                                 mov.put("fechaOrden", pOnline.getFechaPedido());
-                                                mov.put("fecha", pOnline.getFechaPedido().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                                                mov.put("fecha", pOnline.getFechaPedido()
+                                                                .format(java.time.format.DateTimeFormatter
+                                                                                .ofPattern("dd/MM/yyyy HH:mm")));
                                                 mov.put("tipoMovimiento", "INGRESO");
                                                 mov.put("categoria", "Producto (Ecommerce)");
                                                 mov.put("descripcion", "Pedido Web #" + pOnline.getId());
@@ -267,7 +281,8 @@ public class ReporteController {
                                 for (GastoLocal g : gastos) {
                                         Map<String, Object> mov = new HashMap<>();
                                         mov.put("fechaOrden", g.getFecha());
-                                        mov.put("fecha", g.getFecha().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                                        mov.put("fecha", g.getFecha().format(java.time.format.DateTimeFormatter
+                                                        .ofPattern("dd/MM/yyyy HH:mm")));
                                         mov.put("tipoMovimiento", "EGRESO");
                                         mov.put("categoria", "Gasto del Local");
                                         mov.put("descripcion", g.getDescripcion());
@@ -277,17 +292,48 @@ public class ReporteController {
                                         totalEgresos += g.getMonto();
                                 }
 
+                                // ── EGRESOS: Abastecimiento de Inventario (Compras a Proveedores / Directas)
+                                // ──
+                                List<CompraProveedor> compras = compraProveedorRepository
+                                                .findByFechaCompraBetween(inicioDT, finDT);
+                                for (CompraProveedor c : compras) {
+                                        Map<String, Object> mov = new HashMap<>();
+                                        mov.put("fechaOrden", c.getFechaCompra());
+                                        mov.put("fecha", c.getFechaCompra() != null
+                                                        ? c.getFechaCompra()
+                                                                        .format(java.time.format.DateTimeFormatter
+                                                                                        .ofPattern("dd/MM/yyyy HH:mm"))
+                                                        : "---");
+                                        mov.put("tipoMovimiento", "EGRESO");
+                                        mov.put("categoria", "Abastecimiento de Inventario");
+                                        String nombreProd = c.getProducto() != null ? c.getProducto().getNombre()
+                                                        : "Producto";
+                                        String provNombre = (c.getProveedor() != null
+                                                        && c.getProveedor().getNombre() != null)
+                                                                        ? c.getProveedor().getNombre()
+                                                                        : "Compra Directa";
+                                        mov.put("descripcion",
+                                                        "Abastecimiento: " + nombreProd + " (" + provNombre + ")");
+                                        mov.put("monto", c.getTotalInvertido());
+                                        movimientos.add(mov);
+
+                                        totalEgresos += c.getTotalInvertido();
+                                }
+
                                 // ── EGRESOS: Pagos a Barberos (sueldos por comisión) ──
                                 List<PagoBarbero> pagos = pbarberoRepository.findByFechaPagoBetween(inicioDT, finDT);
                                 for (PagoBarbero p : pagos) {
                                         Map<String, Object> mov = new HashMap<>();
                                         mov.put("fechaOrden", p.getFechaPago());
-                                        mov.put("fecha", p.getFechaPago().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                                        mov.put("fecha", p.getFechaPago().format(java.time.format.DateTimeFormatter
+                                                        .ofPattern("dd/MM/yyyy HH:mm")));
                                         mov.put("tipoMovimiento", "EGRESO");
-                                        String nombreBarbero = p.getBarbero() != null ? p.getBarbero().getNombre() : "Barbero";
+                                        String nombreBarbero = p.getBarbero() != null ? p.getBarbero().getNombre()
+                                                        : "Barbero";
                                         mov.put("categoria", "Pago a Barbero");
                                         mov.put("descripcion", "Pago a " + nombreBarbero + " (" + p.getTipoPago() + ")"
-                                                        + (p.getDescripcion() != null ? " - " + p.getDescripcion() : ""));
+                                                        + (p.getDescripcion() != null ? " - " + p.getDescripcion()
+                                                                        : ""));
                                         mov.put("monto", p.getMontoPagado().doubleValue());
                                         movimientos.add(mov);
 
@@ -298,7 +344,8 @@ public class ReporteController {
                                 movimientos.sort((a, b) -> {
                                         Comparable fa = (Comparable) a.get("fechaOrden");
                                         Comparable fb = (Comparable) b.get("fechaOrden");
-                                        if (fa == null || fb == null) return 0;
+                                        if (fa == null || fb == null)
+                                                return 0;
                                         return fb.compareTo(fa);
                                 });
 
@@ -320,7 +367,7 @@ public class ReporteController {
                 model.addAttribute("totalYape", totalYape);
                 model.addAttribute("totalMixto", totalMixto);
                 model.addAttribute("totalFiltrado", totalFiltrado);
-                
+
                 // Nuevos modelos agregados
                 model.addAttribute("totalIngresos", totalIngresos);
                 model.addAttribute("totalEgresos", totalEgresos);
@@ -342,7 +389,7 @@ public class ReporteController {
                         @RequestParam(name = "fechaFin", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
                         @RequestParam(name = "origen", required = false, defaultValue = "TODOS") String origen,
                         @RequestParam(name = "metodoPago", required = false, defaultValue = "TODOS") String metodoPago) {
-                
+
                 GastoLocal nuevoGasto = new GastoLocal();
                 nuevoGasto.setDescripcion(descripcion);
                 nuevoGasto.setMonto(monto);
@@ -351,10 +398,12 @@ public class ReporteController {
 
                 // Redirige de vuelta manteniendo los parámetros de búsqueda del usuario
                 StringBuilder redirect = new StringBuilder("redirect:/admin/reportes?tipoOperacion=" + tipoOperacion);
-                if (fechaInicio != null) redirect.append("&fechaInicio=").append(fechaInicio);
-                if (fechaFin != null) redirect.append("&fechaFin=").append(fechaFin);
+                if (fechaInicio != null)
+                        redirect.append("&fechaInicio=").append(fechaInicio);
+                if (fechaFin != null)
+                        redirect.append("&fechaFin=").append(fechaFin);
                 redirect.append("&origen=").append(origen).append("&metodoPago=").append(metodoPago);
-                
+
                 return redirect.toString();
         }
 }

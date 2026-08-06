@@ -65,7 +65,7 @@
             <!-- Opciones para Clientes Logueados -->
             <div sec:authorize="hasRole('CLIENTE')" class="nb-nav-group">
                 <a href="/reservar" class="btn-nb-gold"><i class="fa-solid fa-calendar-check"></i>Reservar</a>
-                <a href="/catalogo" class="btn-nb-outline"><i class="fa-solid fa-bag-shopping"></i>Catálogo</a>
+                <a href="/#productos" class="btn-nb-outline"><i class="fa-solid fa-bag-shopping"></i>Catálogo</a>
 
                 <button class="btn-nb-outline position-relative" onclick="irAlCarrito()">
                     <i class="fa-solid fa-cart-shopping"></i>
@@ -267,7 +267,8 @@
                 </div>
 
                 <div class="row g-4 justify-content-center">
-                    <div class="col-lg-4 col-md-6" th:each="promo : ${promociones}">
+                    <div class="col-lg-4 col-md-6" th:each="promo : ${promociones}"
+                         th:if="${promo.minimoVisitasRequeridas == 0 or (clienteLogueado != null and clienteLogueado.totalVisitas >= promo.minimoVisitasRequeridas)}">
                         <div class="promo-ticket">
 
                             <div class="ticket-notch notch-left"></div>
@@ -337,12 +338,12 @@
                                 <p th:text="${srv.descripcion ?: 'Servicio profesional de barbería'}"></p>
 
                                 <div>
-                                    <span th:if="${promoHelper.calcularPrecioServicio(srv) < srv.precio.doubleValue()}"
+                                    <span th:if="${promoHelper.calcularPrecioServicio(srv, clienteLogueado) < srv.precio.doubleValue()}"
                                         style="text-decoration: line-through; color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-right: 6px;"
                                         th:text="'S/ ' + ${srv.precio}"></span>
 
                                     <span style="color:var(--gold); font-weight:700; font-size:1.1rem;"
-                                        th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioServicio(srv), 1, 2)}"></span>
+                                        th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioServicio(srv, clienteLogueado), 1, 2)}"></span>
                                 </div>
                             </div>
                         </div>
@@ -352,7 +353,7 @@
         </section>
 
         <!-- ══ PRODUCTOS ══ -->
-        <section class="section-products">
+        <section class="section-products" id="productos">
             <div class="container">
                 <div class="sec-header">
                     <span class="sec-eyebrow">Para el Cuidado Diario</span>
@@ -368,7 +369,8 @@
                     </button>
                 </div>
                 <div class="row g-4" id="gridProductos">
-                    <div class="col-xl-3 col-lg-4 col-sm-6 item-producto-tarjeta" th:each="prod : ${productosBarberia}">
+                    <div class="col-xl-3 col-lg-4 col-sm-6 item-producto-tarjeta" th:each="prod : ${productosBarberia}"
+                        th:attr="data-subcategoria=${prod.categoria != null ? prod.categoria.nombre : 'General'}">
                         <div class="card-producto-premium position-relative"
                             th:classappend="${prod.stock == 0} ? ' producto-agotado' : ''">
 
@@ -385,45 +387,55 @@
                                     th:alt="${prod.nombre}">
 
                                 <div th:if="${prod.stock == 0}" class="badge-agotado-overlay">
-                                    <span>AGOTADO</span>
                                 </div>
                             </div>
 
-                            <div class="cuerpo-detalle d-flex flex-column h-100">
-                                <span class="subcat-tag"
-                                    th:text="${prod.categoria != null ? prod.categoria.nombre : 'General'}"></span>
+                            <div class="cuerpo-detalle d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="subcat-tag mb-0"
+                                        th:text="${prod.categoria != null ? prod.categoria.nombre : 'General'}"></span>
+
+                                    <span class="badge-stock-info small" th:if="${prod.stock > 0}">
+                                        <i class="fa-solid fa-boxes-stacked me-1"></i>Stock: <strong
+                                            th:text="${prod.stock}">0</strong>
+                                    </span>
+                                    <span class="badge-stock-info small text-danger" th:if="${prod.stock == 0}">
+                                        <i class="fa-solid fa-circle-xmark me-1"></i>Agotado
+                                    </span>
+                                </div>
 
                                 <h5 class="prod-titulo" th:text="${prod.nombre}" th:title="${prod.nombre}">Nombre del
                                     Producto</h5>
 
                                 <p class="prod-desc-corta" th:text="${prod.descripcion}"></p>
 
-                                <div th:if="${promoHelper.calcularPrecioProducto(prod) < prod.precioVenta && prod.stock > 0}"
-                                    class="promo-vigencia-tag mt-auto mb-2">
-                                    <i class="fa-regular fa-clock me-1"></i>
-                                    <span>¡Promoción por tiempo limitado!</span>
-                                </div>
-
-                                <div class="d-flex justify-content-between align-items-center mt-2">
-                                    <div class="wrapper-precios-prod">
-                                        <span th:if="${promoHelper.calcularPrecioProducto(prod) < prod.precioVenta}"
-                                            class="precio-original-text d-block text-decoration-line-through text-white-50 small mb-0"
-                                            th:text="'S/ ' + ${#numbers.formatDecimal(prod.precioVenta, 1, 2)}"></span>
-
-                                        <span class="prod-precio"
-                                            style="color: #c9a84c; font-weight: 800; font-size: 1.2rem;"
-                                            th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioProducto(prod), 1, 2)}">
-                                        </span>
+                                <div class="prod-card-footer mt-auto pt-2">
+                                    <div th:if="${promoHelper.calcularPrecioProducto(prod) < prod.precioVenta && prod.stock > 0}"
+                                        class="promo-vigencia-tag mb-2">
+                                        <i class="fa-regular fa-clock me-1"></i>
+                                        <span>¡Promoción por tiempo limitado!</span>
                                     </div>
 
-                                    <button th:if="${prod.stock > 0}" type="button" class="btn-agregar-carrito"
-                                        th:attr="onclick='agregarAlCarrito(' + ${prod.id} + ', ' + ${prod.stock} + ')'">
-                                        <i class="fa-solid fa-cart-shopping me-1"></i>Añadir
-                                    </button>
-                                    <button th:if="${prod.stock == 0}" type="button"
-                                        class="btn-agregar-carrito btn-disabled" disabled>
-                                        <i class="fa-solid fa-ban me-1"></i>Agotado
-                                    </button>
+                                    <div class="d-flex justify-content-between align-items-end">
+                                        <div class="wrapper-precios-prod">
+                                            <span th:if="${promoHelper.calcularPrecioProducto(prod) < prod.precioVenta}"
+                                                class="precio-original-text d-block text-decoration-line-through text-white-50 small mb-0"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(prod.precioVenta, 1, 2)}"></span>
+
+                                            <span class="prod-precio"
+                                                th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioProducto(prod), 1, 2)}">
+                                            </span>
+                                        </div>
+
+                                        <button th:if="${prod.stock > 0}" type="button" class="btn-agregar-carrito"
+                                            th:attr="onclick='agregarAlCarrito(' + ${prod.id} + ', ' + ${prod.stock} + ')'">
+                                            <i class="fa-solid fa-cart-shopping me-1"></i>Añadir
+                                        </button>
+                                        <button th:if="${prod.stock == 0}" type="button"
+                                            class="btn-agregar-carrito btn-disabled" disabled>
+                                            <i class="fa-solid fa-ban me-1"></i>Agotado
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -490,7 +502,7 @@
                         <ul class="footer-links">
                             <li><a href="/">Inicio</a></li>
                             <li><a href="/reservar">Reservar Cita</a></li>
-                            <li><a href="/catalogo">Catálogo</a></li>
+                            <li><a href="/#productos">Catálogo</a></li>
                             <li><a href="/nosotros">Nuestro Equipo</a></li>
                         </ul>
                     </div>

@@ -13,18 +13,25 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.BarberiaLaClasica.service.BarberoService;
 import com.example.BarberiaLaClasica.service.ProductoService;
 import com.example.BarberiaLaClasica.service.PromocionHelper;
 import com.example.BarberiaLaClasica.service.RecepcionService;
 import com.example.BarberiaLaClasica.service.ClienteService;
+import com.example.BarberiaLaClasica.service.CategoriaService;
 import com.example.BarberiaLaClasica.repository.ServicioRepository;
+import com.example.BarberiaLaClasica.repository.DetalleNotaVentaRepository;
+import com.example.BarberiaLaClasica.repository.NotaVentaRepository;
 import com.example.BarberiaLaClasica.model.Barbero;
+import com.example.BarberiaLaClasica.model.Categoria;
 import com.example.BarberiaLaClasica.model.Cita;
+import com.example.BarberiaLaClasica.model.Cliente;
 import com.example.BarberiaLaClasica.model.ConsumoSilla;
+import com.example.BarberiaLaClasica.model.DetalleNotaVenta;
 import com.example.BarberiaLaClasica.model.NotaVenta;
+import com.example.BarberiaLaClasica.model.Producto;
 
 @Controller
 @RequestMapping("/secretario")
@@ -42,6 +49,12 @@ public class RecepcionController {
     private RecepcionService recepcionService;
     @Autowired
     private PromocionHelper promocionHelper;
+    @Autowired
+    private CategoriaService categoriaService;
+    @Autowired
+    private DetalleNotaVentaRepository detalleNotaVentaRepository;
+    @Autowired
+    private NotaVentaRepository notaVentaRepository;
 
     // ── Panel principal con PAGINACIÓN ───────────────────────────────────────
     @GetMapping("/recepcion")
@@ -119,16 +132,28 @@ public class RecepcionController {
         // 1. Mapeamos los productos consumidos (aquí se mantiene el precio normal de
         // venta)
         List<Map<String, Object>> items = consumos.stream().map(c -> {
-            double precioOriginal = c.getProducto().getPrecioVenta();
-            double subtotalCalculado = precioOriginal * c.getCantidad();
-
             Map<String, Object> item = new HashMap<>();
             item.put("id", c.getId());
-            item.put("descripcion", c.getProducto().getNombre());
-            item.put("cantidad", c.getCantidad());
-            item.put("precioUnit", precioOriginal);
-            item.put("precioOriginal", precioOriginal);
-            item.put("subtotal", subtotalCalculado);
+            if (c.getProducto() != null) {
+                double precioOriginal = c.getProducto().getPrecioVenta();
+                double subtotalCalculado = precioOriginal * c.getCantidad();
+                item.put("tipo", "PRODUCTO");
+                item.put("descripcion", c.getProducto().getNombre());
+                item.put("cantidad", c.getCantidad());
+                item.put("precioUnit", precioOriginal);
+                item.put("precioOriginal", precioOriginal);
+                item.put("subtotal", subtotalCalculado);
+            } else if (c.getServicio() != null) {
+                double precioOriginal = c.getServicio().getPrecio().doubleValue();
+                double precioFinal = c.getSubtotal();
+                item.put("tipo", "SERVICIO");
+                item.put("servicioId", c.getServicio().getId());
+                item.put("descripcion", c.getServicio().getNombre());
+                item.put("cantidad", 1);
+                item.put("precioUnit", precioFinal);
+                item.put("precioOriginal", precioOriginal);
+                item.put("subtotal", precioFinal);
+            }
             return item;
         }).toList();
 
@@ -141,33 +166,25 @@ public class RecepcionController {
 
         final double[] totalFinal = { totalProductos };
 
-        // 2. Lógica Condicional para el Servicio de la Silla
+        // 2. Lógica para el Servicio de la Silla (Promociones solo aplican a Reservas Web)
         recepcionService.getSessionActiva(barberoId).ifPresent(s -> {
             double precioServicioOriginal = s.getServicio().getPrecio().doubleValue();
-            double precioServicioFinal = precioServicioOriginal; // Por defecto tarifa normal (S/ 35.00)
+            
+            double precioServicioFinal = precioServicioOriginal;
+            if (s.getCita() != null && s.getCita().getTotalPrecio() != null) {
+                precioServicioFinal = s.getCita().getTotalPrecio().doubleValue();
+            }
 
-            // REVISIÓN ESTRICTA: Debe tener cita, la cita debe existir en BD y no ser un
-            // objeto vacío
-            if (s.getCita() != null && s.getCita().getId() != null) {
-
-                // Adicionalmente, verificamos que la cita no haya sido creada como "Walk-in"
-                // manual
-                // Si el monto de Yape de la reserva web existe y es mayor a 0, confirmamos que
-                // es reserva web
-                if (s.getCita().getMontoYape() != null
-                        && s.getCita().getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
-
-                    // SÓLO AQUÍ se aplica el precio con descuento web (S/ 17.50)
-                    precioServicioFinal = promocionHelper.calcularPrecioServicio(s.getServicio());
-
-                    response.put("anticipoYape", s.getCita().getMontoYape().doubleValue());
-                    response.put("codigoYape", s.getCita().getCodigoYape() != null ? s.getCita().getCodigoYape() : "");
-                }
+            if (s.getCita() != null && s.getCita().getMontoYape() != null
+                    && s.getCita().getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                response.put("anticipoYape", s.getCita().getMontoYape().doubleValue());
+                response.put("codigoYape", s.getCita().getCodigoYape() != null ? s.getCita().getCodigoYape() : "");
             }
 
             totalFinal[0] += precioServicioFinal;
 
             Map<String, Object> servicioMap = new HashMap<>();
+            servicioMap.put("id", s.getServicio().getId());
             servicioMap.put("nombre", s.getServicio().getNombre());
             servicioMap.put("precio", precioServicioFinal);
             servicioMap.put("precioOriginal", precioServicioOriginal);
@@ -201,6 +218,19 @@ public class RecepcionController {
         }
     }
 
+    @PostMapping("/recepcion/api-consumos/agregar-servicio")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> agregarServicio(
+            @RequestParam Long barberoId,
+            @RequestParam Long servicioId) {
+        try {
+            recepcionService.agregarServicio(barberoId, servicioId);
+            return ResponseEntity.ok(Map.of("mensaje", "Servicio agregado a la silla"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/recepcion/api-consumos/eliminar/{id}")
     @ResponseBody
     public ResponseEntity<Map<String, String>> eliminar(@PathVariable Long id) {
@@ -217,25 +247,7 @@ public class RecepcionController {
             @RequestParam(required = false) String codigoYape,
             RedirectAttributes ra) {
         try {
-            // 1. Interceptamos la sesión activa de la silla usando tu servicio nativo
-            recepcionService.getSessionActiva(barberoId).ifPresent(s -> {
-                double precioServicioOriginal = s.getServicio().getPrecio().doubleValue();
-                double precioServicioFinal = precioServicioOriginal; // Por defecto S/ 35.00
-
-                // 2. VALIDADOR ESTRICTO: ¿Tiene una cita web con pago anticipado real?
-                if (s.getCita() != null && s.getCita().getId() != null) {
-                    var cita = s.getCita();
-                    if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
-                        // SÓLO si cumple, le damos la tarifa con descuento web (S/ 17.50)
-                        precioServicioFinal = promocionHelper.calcularPrecioServicio(s.getServicio());
-                    }
-                }
-
-                // 3. Forzamos el precio calculado en el objeto de la sesión antes de guardar
-                s.getServicio().setPrecio(java.math.BigDecimal.valueOf(precioServicioFinal));
-            });
-
-            // 4. Tu flujo original intacto procesará el cobro con el valor correcto
+            // 4. Tu flujo original procesará el cobro con el valor promocional sin alterar la BD
             NotaVenta nota = recepcionService.finalizarAtencion(
                     barberoId, metodoPago, montoYape, codigoYape);
 
@@ -249,23 +261,25 @@ public class RecepcionController {
     // ── Notas de venta ────────────────────────────────────────────────────────
     @GetMapping("/recepcion/notas-venta/{id}/detalle")
     @ResponseBody
+    @Transactional
     public ResponseEntity<Map<String, Object>> detalleNota(@PathVariable Long id) {
         NotaVenta nota = recepcionService.obtenerNota(id);
 
         List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d -> {
             Map<String, Object> item = new HashMap<>();
-            item.put("descripcion", d.getDescripcion());
+            item.put("descripcion", d.getDescripcion() != null ? d.getDescripcion() : "");
             item.put("cantidad", d.getCantidad());
             item.put("precioUnitario", d.getPrecioUnitario());
             item.put("subtotal", d.getSubtotal());
-            item.put("tipo", d.getTipo());
+            item.put("tipo", d.getTipo() != null ? d.getTipo() : "PRODUCTO");
             return item;
         }).toList();
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id", nota.getId());
-        resp.put("fecha", nota.getFecha().format(
-                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        resp.put("fecha", nota.getFecha() != null
+                ? nota.getFecha().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                : "");
         resp.put("cliente", nota.getCliente() != null
                 ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
                 : null);
@@ -296,26 +310,43 @@ public class RecepcionController {
         }
     }
 
-    // ── NOTAS DE VENTA CON PAGINACIÓN ─────────────────────────────────────────
+    // ── NOTAS DE VENTA CON PAGINACIÓN Y FILTRO POR PERÍODO ─────────────────────
     @GetMapping("/recepcion/notas-venta")
+    @Transactional
     public String notas(Model model,
+            @RequestParam(defaultValue = "MES") String periodo,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "15") int size) {
+
+        java.time.LocalDateTime ahora = java.time.LocalDateTime.now();
+        java.time.LocalDateTime inicio = java.time.LocalDateTime.of(ahora.getYear(), ahora.getMonth(), 1, 0, 0, 0);
+        java.time.LocalDateTime fin = ahora.withHour(23).withMinute(59).withSecond(59);
+
+        if ("HOY".equalsIgnoreCase(periodo)) {
+            inicio = ahora.withHour(0).withMinute(0).withSecond(0);
+        } else if ("SEMANA".equalsIgnoreCase(periodo)) {
+            inicio = ahora.minusDays(7).withHour(0).withMinute(0).withSecond(0);
+        } else if ("TODOS".equalsIgnoreCase(periodo)) {
+            inicio = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+
+        List<NotaVenta> todasNotasPeriodo = recepcionService.listarNotasPorRango(inicio, fin);
+
+        double totalRecaudado = todasNotasPeriodo.stream().mapToDouble(NotaVenta::getTotal).sum();
+        double totalYape = todasNotasPeriodo.stream().mapToDouble(NotaVenta::getMontoYape).sum();
+        double totalEfectivo = todasNotasPeriodo.stream().mapToDouble(NotaVenta::getMontoEfectivo).sum();
+        int cantidadNotas = todasNotasPeriodo.size();
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
-
-        Page<NotaVenta> notasPage = recepcionService.listarNotasPaginadas(pageable);
-
-        double totalGeneral = notasPage.getContent().stream()
-                .mapToDouble(NotaVenta::getTotal)
-                .sum();
-
-        double promedio = notasPage.getContent().isEmpty() ? 0 : totalGeneral / notasPage.getContent().size();
+        Page<NotaVenta> notasPage = recepcionService.listarNotasPorRangoPaginadas(inicio, fin, pageable);
 
         model.addAttribute("notasPage", notasPage);
         model.addAttribute("notas", notasPage.getContent());
-        model.addAttribute("totalGeneral", totalGeneral);
-        model.addAttribute("promedio", promedio);
+        model.addAttribute("periodo", periodo);
+        model.addAttribute("totalRecaudado", totalRecaudado);
+        model.addAttribute("totalYape", totalYape);
+        model.addAttribute("totalEfectivo", totalEfectivo);
+        model.addAttribute("cantidadNotas", cantidadNotas);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", notasPage.getTotalPages());
         model.addAttribute("totalItems", notasPage.getTotalElements());
@@ -326,6 +357,7 @@ public class RecepcionController {
 
     @GetMapping("/recepcion/ultima-nota")
     @ResponseBody
+    @Transactional
     public ResponseEntity<Map<String, Object>> ultimaNota(@RequestParam Long barberoId) {
         NotaVenta nota = recepcionService.listarNotas().stream()
                 .filter(n -> n.getBarbero() != null &&
@@ -336,16 +368,21 @@ public class RecepcionController {
         if (nota == null)
             return ResponseEntity.notFound().build();
 
-        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d -> Map.<String, Object>of(
-                "descripcion", d.getDescripcion(),
-                "cantidad", d.getCantidad(),
-                "subtotal", d.getSubtotal(),
-                "tipo", d.getTipo())).toList();
+        List<Map<String, Object>> detalles = nota.getDetalles().stream().map(d -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("descripcion", d.getDescripcion() != null ? d.getDescripcion() : "");
+            item.put("cantidad", d.getCantidad());
+            item.put("precioUnitario", d.getPrecioUnitario());
+            item.put("subtotal", d.getSubtotal());
+            item.put("tipo", d.getTipo() != null ? d.getTipo() : "SERVICIO");
+            return item;
+        }).toList();
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("id", nota.getId());
-        resp.put("fecha", nota.getFecha().format(
-                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        resp.put("fecha", nota.getFecha() != null
+                ? nota.getFecha().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                : "");
         resp.put("cliente", nota.getCliente() != null
                 ? nota.getCliente().getNombres() + " " + nota.getCliente().getApellidos()
                 : null);
@@ -358,5 +395,147 @@ public class RecepcionController {
         resp.put("detalles", detalles);
 
         return ResponseEntity.ok(resp);
+    }
+
+    // ── VENTA DIRECTA DE PRODUCTOS (MÓDULO DE RECEPCIÓN / CAJA) ───────────────
+    @GetMapping("/ventas-productos")
+    @Transactional
+    public String moduloVentasProductos(Model model,
+            @RequestParam(defaultValue = "MES") String periodo,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        List<Categoria> categoriasPrincipales = categoriaService.listarPrincipalesActivas();
+        List<Categoria> todasSubcategorias = categoriaService.listarTodasActivas().stream()
+                .filter(c -> c.getPadre() != null)
+                .toList();
+        List<Producto> productosActivos = productoService.listarActivos();
+        List<Cliente> clientes = clienteService.listarTodos();
+
+        java.time.LocalDateTime ahora = java.time.LocalDateTime.now();
+        java.time.LocalDateTime inicio = java.time.LocalDateTime.of(ahora.getYear(), ahora.getMonth(), 1, 0, 0, 0);
+        java.time.LocalDateTime fin = ahora.withHour(23).withMinute(59).withSecond(59);
+
+        if ("HOY".equalsIgnoreCase(periodo)) {
+            inicio = ahora.withHour(0).withMinute(0).withSecond(0);
+        } else if ("SEMANA".equalsIgnoreCase(periodo)) {
+            inicio = ahora.minusDays(7).withHour(0).withMinute(0).withSecond(0);
+        } else if ("TODOS".equalsIgnoreCase(periodo)) {
+            inicio = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
+        Page<NotaVenta> notasPage = recepcionService.listarNotasPorRangoPaginadas(inicio, fin, pageable);
+
+        // Filtrar notas que tengan detalles tipo PRODUCTO o ventas directas
+        List<NotaVenta> ventasProductosHistory = notasPage.getContent().stream()
+                .filter(n -> n.getDetalles() != null && n.getDetalles().stream().anyMatch(d -> "PRODUCTO".equalsIgnoreCase(d.getTipo())))
+                .toList();
+
+        model.addAttribute("categoriasPrincipales", categoriasPrincipales);
+        model.addAttribute("subcategorias", todasSubcategorias);
+        model.addAttribute("productos", productosActivos);
+        model.addAttribute("clientes", clientes);
+        model.addAttribute("ventasHistory", ventasProductosHistory);
+        model.addAttribute("notasPage", notasPage);
+        model.addAttribute("periodo", periodo);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", notasPage.getTotalPages());
+        model.addAttribute("size", size);
+
+        return "secretario/ventas-productos";
+    }
+
+    @GetMapping("/api/ventas-productos/subcategorias/{padreId}")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> obtenerSubcategorias(@PathVariable Long padreId) {
+        List<Categoria> subs = categoriaService.listarSubcategoriasPorPadre(padreId);
+        List<Map<String, Object>> result = subs.stream().map(c -> Map.<String, Object>of(
+                "id", c.getId(),
+                "nombre", c.getNombre())).toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/api/ventas-productos/procesar")
+    @ResponseBody
+    public ResponseEntity<?> procesarVentaDirecta(@RequestBody Map<String, Object> payload) {
+        try {
+            Long clienteId = payload.get("clienteId") != null && !payload.get("clienteId").toString().isEmpty()
+                    ? Long.valueOf(payload.get("clienteId").toString())
+                    : null;
+
+            String metodoPago = payload.get("metodoPago") != null ? payload.get("metodoPago").toString() : "EFECTIVO";
+            double montoEfectivo = payload.get("montoEfectivo") != null ? Double.parseDouble(payload.get("montoEfectivo").toString()) : 0.0;
+            double montoYape = payload.get("montoYape") != null ? Double.parseDouble(payload.get("montoYape").toString()) : 0.0;
+            String codigoYape = payload.get("codigoYape") != null ? payload.get("codigoYape").toString() : "";
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> items = (List<Map<String, Object>>) payload.get("items");
+            if (items == null || items.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Debe agregar al menos un producto al carrito."));
+            }
+
+            NotaVenta notaGuardada = recepcionService.procesarVentaDirectaProductos(
+                    clienteId, items, metodoPago, montoEfectivo, montoYape, codigoYape);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "notaId", notaGuardada.getId(),
+                    "total", notaGuardada.getTotal(),
+                    "mensaje", "Venta procesada con éxito. Stock actualizado y registrado en Kardex."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Map<String, Object> errResp = new HashMap<>();
+            errResp.put("error", (e.getMessage() != null && !e.getMessage().isEmpty()) ? e.getMessage() : e.toString());
+            return ResponseEntity.badRequest().body(errResp);
+        }
+    }
+
+    // ── MÓDULO INDEPENDIENTE: HISTORIAL DE VENTAS DE PRODUCTOS Y SILLAS (PAGINADO Y FILTRADO) ────────
+    @GetMapping("/ventas-productos/historial")
+    @Transactional
+    public String historialVentasProductos(Model model,
+            @RequestParam(defaultValue = "MES") String periodo,
+            @RequestParam(defaultValue = "") String origen,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+
+        java.time.LocalDateTime ahora = java.time.LocalDateTime.now();
+        java.time.LocalDateTime inicio = java.time.LocalDateTime.of(ahora.getYear(), ahora.getMonth(), 1, 0, 0, 0);
+        java.time.LocalDateTime fin = ahora.withHour(23).withMinute(59).withSecond(59);
+
+        if ("HOY".equalsIgnoreCase(periodo)) {
+            inicio = ahora.withHour(0).withMinute(0).withSecond(0);
+        } else if ("SEMANA".equalsIgnoreCase(periodo)) {
+            inicio = ahora.minusDays(7).withHour(0).withMinute(0).withSecond(0);
+        } else if ("TODOS".equalsIgnoreCase(periodo)) {
+            inicio = java.time.LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("fecha").descending());
+        Page<NotaVenta> notasPage = notaVentaRepository.buscarNotasVentaFiltradas(
+                inicio, fin, origen.trim(), search.trim(), pageable);
+
+        // Totales del período
+        List<NotaVenta> todasNotasPeriodo = notaVentaRepository.findByFechaBetween(inicio, fin);
+        double totalRecaudado = todasNotasPeriodo.stream().mapToDouble(NotaVenta::getTotal).sum();
+        long totalVentasSilla = todasNotasPeriodo.stream().filter(n -> n.getBarbero() != null).count();
+        long totalVentasCaja  = todasNotasPeriodo.stream().filter(n -> n.getBarbero() == null).count();
+
+        model.addAttribute("notasPage", notasPage);
+        model.addAttribute("ventasNotas", notasPage.getContent());
+        model.addAttribute("periodo", periodo);
+        model.addAttribute("origen", origen);
+        model.addAttribute("search", search);
+        model.addAttribute("totalRecaudado", totalRecaudado);
+        model.addAttribute("totalVentasSilla", totalVentasSilla);
+        model.addAttribute("totalVentasCaja", totalVentasCaja);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", notasPage.getTotalPages());
+        model.addAttribute("totalItems", notasPage.getTotalElements());
+        model.addAttribute("size", size);
+
+        return "secretario/ventas-productos-historial";
     }
 }

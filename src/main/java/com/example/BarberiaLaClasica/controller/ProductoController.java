@@ -36,10 +36,20 @@ public class ProductoController {
     @Autowired
     private CategoriaRepository categoriaRepository;
 
-    // 1. LISTAR PRODUCTOS (Se arregló el mapeo duplicado)
-    @GetMapping("") // <-- Al dejarlo vacío o "/" mapeará exactamente a: /admin/productos
-    public String listarProductos(Model model) {
-        model.addAttribute("productos", productoService.listarTodos());
+    // 1. LISTAR PRODUCTOS CON PAGINACIÓN
+    @GetMapping("")
+    public String listarProductos(Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("id").descending());
+        org.springframework.data.domain.Page<Producto> productosPage = productoService.listarTodosPaginado(pageable);
+
+        model.addAttribute("productosPage", productosPage);
+        model.addAttribute("productos", productosPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", productosPage.getTotalPages());
+        model.addAttribute("totalItems", productosPage.getTotalElements());
+        model.addAttribute("size", size);
 
         // 1. Enviamos solo las categorías principales (las que no tienen padre)
         model.addAttribute("categoriasPadre", categoriaRepository.findByPadreIsNullAndActivoTrue());
@@ -76,6 +86,10 @@ public class ProductoController {
                 if (productoExistente != null) {
                     producto.setImagen(productoExistente.getImagen());
                 }
+            }
+
+            if (producto.getPrecioVenta() > 999.99) {
+                producto.setPrecioVenta(999.99);
             }
 
             productoService.guardar(producto);

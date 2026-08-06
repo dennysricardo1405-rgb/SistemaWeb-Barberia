@@ -4,6 +4,35 @@
 <head>
     <title>Categorías | La Clásica</title>
     <div th:replace="~{layout/sidebar :: head_comun}"></div>
+    <style>
+        .btn-pag {
+            padding: 6px 14px;
+            border-radius: 8px;
+            background: rgba(255, 107, 43, 0.12);
+            color: #ff6b2b;
+            border: 1px solid rgba(255, 107, 43, 0.3);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn-pag:hover {
+            background: #ff6b2b;
+            color: #ffffff;
+            border-color: #ff6b2b;
+        }
+        .btn-pag.active {
+            background: #ff6b2b;
+            color: #ffffff;
+            border-color: #ff6b2b;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(255, 107, 43, 0.35);
+        }
+        .btn-pag.disabled {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -89,6 +118,22 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center p-3 border-top" th:if="${totalItems != null}" style="background: #0d0d0d;">
+                        <div class="small text-muted">
+                            Mostrando <span class="fw-bold text-white" th:text="${categorias.size()}">0</span> de <span class="fw-bold text-white" th:text="${totalItems}">0</span> categorías.
+                        </div>
+                        <div class="d-flex gap-1 align-items-center" th:if="${totalPages != null and totalPages > 0}">
+                            <a class="btn-pag" th:classappend="${currentPage == 0} ? ' disabled'"
+                               th:href="@{/admin/categorias(page=${currentPage - 1})}">« Anterior</a>
+                            
+                            <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}" 
+                               class="btn-pag" th:classappend="${i == currentPage} ? ' active'"
+                               th:href="@{/admin/categorias(page=${i})}" th:text="${i + 1}">1</a>
+                            
+                            <a class="btn-pag" th:classappend="${currentPage + 1 >= totalPages} ? ' disabled'"
+                               th:href="@{/admin/categorias(page=${currentPage + 1})}">Siguiente »</a>
+                        </div>
                     </div>
                 </div>
             </div>

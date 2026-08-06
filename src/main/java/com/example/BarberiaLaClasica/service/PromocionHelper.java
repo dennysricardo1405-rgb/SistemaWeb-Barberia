@@ -1,9 +1,12 @@
 package com.example.BarberiaLaClasica.service;
 
+import com.example.BarberiaLaClasica.model.Cliente;
 import com.example.BarberiaLaClasica.model.Producto;
 import com.example.BarberiaLaClasica.model.Promocion;
 import com.example.BarberiaLaClasica.model.Servicio;
+import com.example.BarberiaLaClasica.repository.CitaRepository;
 import com.example.BarberiaLaClasica.repository.PromocionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -15,15 +18,26 @@ import java.util.List;
 public class PromocionHelper {
 
     private final PromocionRepository promocionRepository;
+    private final CitaRepository citaRepository;
 
-    public PromocionHelper(PromocionRepository promocionRepository) {
+    @Autowired
+    public PromocionHelper(PromocionRepository promocionRepository, CitaRepository citaRepository) {
         this.promocionRepository = promocionRepository;
+        this.citaRepository = citaRepository;
     }
 
     /**
-     * Calcula el precio de un servicio aplicando el mejor descuento vigente.
+     * Sobrecarga general sin cliente (evalúa promos sin restricción de visitas ni uso previo)
      */
     public double calcularPrecioServicio(Servicio servicio) {
+        return calcularPrecioServicio(servicio, null);
+    }
+
+    /**
+     * Calcula el precio de un servicio evaluando visitas del cliente y uso único de la promo.
+     */
+    public double calcularPrecioServicio(Servicio servicio, Cliente cliente) {
+        if (servicio == null) return 0.0;
         double precioOriginal = servicio.getPrecio().doubleValue();
         List<Promocion> vigentes = promocionRepository.findPromocionesVigentes(LocalDateTime.now());
 
@@ -32,6 +46,14 @@ public class PromocionHelper {
         for (Promocion p : vigentes) {
             if ("SERVICIO".equalsIgnoreCase(p.getTipoPromocion()) && p.getServicio() != null) {
                 if (p.getServicio().getId().equals(servicio.getId())) {
+
+                    // 1. Validar fidelización por mínimo de visitas requeridas
+                    if (p.getMinimoVisitasRequeridas() > 0) {
+                        if (cliente == null || cliente.getTotalVisitas() < p.getMinimoVisitasRequeridas()) {
+                            continue; // El cliente no cumple las visitas requeridas
+                        }
+                    }
+
                     double desc = p.getPorcentajeDescuento().doubleValue();
                     if (desc > maxDescuento) {
                         maxDescuento = desc;
@@ -50,9 +72,17 @@ public class PromocionHelper {
     }
 
     /**
-     * Calcula el precio de un producto aplicando la promoción por ID o por Categoría.
+     * Sobrecarga general de productos sin cliente
      */
     public double calcularPrecioProducto(Producto producto) {
+        return calcularPrecioProducto(producto, null);
+    }
+
+    /**
+     * Calcula el precio de un producto aplicando la promoción por ID o por Categoría evaluando visitas.
+     */
+    public double calcularPrecioProducto(Producto producto, Cliente cliente) {
+        if (producto == null) return 0.0;
         double precioOriginal = producto.getPrecioVenta();
         List<Promocion> vigentes = promocionRepository.findPromocionesVigentes(LocalDateTime.now());
 

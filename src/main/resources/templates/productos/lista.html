@@ -4,6 +4,35 @@
 <head>
     <title>Productos | La Clásica</title>
     <div th:replace="~{layout/sidebar :: head_comun}"></div>
+    <style>
+        .btn-pag {
+            padding: 6px 14px;
+            border-radius: 8px;
+            background: rgba(255, 107, 43, 0.12);
+            color: #ff6b2b;
+            border: 1px solid rgba(255, 107, 43, 0.3);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn-pag:hover {
+            background: #ff6b2b;
+            color: #ffffff;
+            border-color: #ff6b2b;
+        }
+        .btn-pag.active {
+            background: #ff6b2b;
+            color: #ffffff;
+            border-color: #ff6b2b;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(255, 107, 43, 0.35);
+        }
+        .btn-pag.disabled {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+    </style>
 </head>
 
 <body class="bg-light">
@@ -106,6 +135,22 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="d-flex justify-content-between align-items-center p-3 border-top" th:if="${totalItems != null}" style="background: #0d0d0d;">
+                        <div class="small text-muted">
+                            Mostrando <span class="fw-bold text-white" th:text="${productos.size()}">0</span> de <span class="fw-bold text-white" th:text="${totalItems}">0</span> productos.
+                        </div>
+                        <div class="d-flex gap-1 align-items-center" th:if="${totalPages != null and totalPages > 0}">
+                            <a class="btn-pag" th:classappend="${currentPage == 0} ? ' disabled'"
+                               th:href="@{/admin/productos(page=${currentPage - 1})}">« Anterior</a>
+                            
+                            <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}" 
+                               class="btn-pag" th:classappend="${i == currentPage} ? ' active'"
+                               th:href="@{/admin/productos(page=${i})}" th:text="${i + 1}">1</a>
+                            
+                            <a class="btn-pag" th:classappend="${currentPage + 1 >= totalPages} ? ' disabled'"
+                               th:href="@{/admin/productos(page=${currentPage + 1})}">Siguiente »</a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -150,6 +195,16 @@
                                 <option th:each="sub : ${subcategorias}" th:value="${sub.id}" th:text="${sub.nombre}"
                                     th:data-padre="${sub.padre != null ? sub.padre.id : ''}"></option>
                             </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Precio de Venta</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted">S/</span>
+                                <input type="number" step="0.01" min="0" max="999.99" th:field="*{precioVenta}" id="crearPrecio" class="form-control"
+                                    placeholder="0.00" oninput="validarPrecioMax3Cifras(this)" required>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Máximo 3 cifras enteras (ej: 999.99)</small>
                         </div>
 
                         <div class="mb-3">
@@ -217,9 +272,10 @@
                             <label class="form-label fw-bold small text-uppercase">Precio de Venta</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-dark text-muted border-0">S/</span>
-                                <input type="number" step="0.10" name="precioVenta" id="editPrecio" class="form-control"
-                                    required>
+                                <input type="number" step="0.01" min="0" max="999.99" name="precioVenta" id="editPrecio" class="form-control"
+                                    oninput="validarPrecioMax3Cifras(this)" required>
                             </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Máximo 3 cifras enteras (ej: 999.99)</small>
                         </div>
 
                         <div class="mb-3">
@@ -312,6 +368,45 @@
 
             const modal = new bootstrap.Modal(document.getElementById('modalEditarProducto'));
             modal.show();
+        }
+
+        function validarPrecioMax3Cifras(input) {
+            let val = input.value;
+            if (!val) return;
+
+            if (parseFloat(val) < 0) {
+                input.value = "0";
+                return;
+            }
+
+            let partes = val.split('.');
+
+            // Quitar ceros a la izquierda excedentes en la parte entera (ej: "005" -> "5", "00" -> "0")
+            if (partes[0].length > 1 && partes[0].startsWith('0')) {
+                partes[0] = partes[0].replace(/^0+/, '') || '0';
+            }
+
+            // Limitar la parte entera a un máximo de 3 dígitos (ej: "1234" -> "123")
+            if (partes[0].length > 3) {
+                partes[0] = partes[0].substring(0, 3);
+            }
+
+            // Limitar a máximo 2 decimales si existen
+            if (partes.length > 1) {
+                if (partes[1].length > 2) {
+                    partes[1] = partes[1].substring(0, 2);
+                }
+                val = partes[0] + '.' + partes[1];
+            } else {
+                val = partes[0];
+            }
+
+            // Validar límite superior 999.99
+            if (parseFloat(val) > 999.99) {
+                val = "999.99";
+            }
+
+            input.value = val;
         }
     </script>
 </body>

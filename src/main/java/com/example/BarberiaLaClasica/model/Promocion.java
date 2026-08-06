@@ -3,6 +3,7 @@ package com.example.BarberiaLaClasica.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
@@ -61,5 +62,22 @@ public class Promocion {
     public boolean isVigente() {
         LocalDateTime ahora = LocalDateTime.now();
         return activo && !ahora.isBefore(fechaInicio) && !ahora.isAfter(fechaFin);
+    }
+
+    /**
+     * Devuelve el precio final calculado con descuento si aplica a un servicio o producto específico.
+     */
+    public Double getPrecioFinalEstimado() {
+        if (porcentajeDescuento == null) return null;
+        double desc = porcentajeDescuento.doubleValue();
+        if (servicio != null && servicio.getPrecio() != null) {
+            double orig = servicio.getPrecio().doubleValue();
+            return BigDecimal.valueOf(orig - (orig * (desc / 100.0))).setScale(2, RoundingMode.HALF_UP).doubleValue();
+        }
+        if (producto != null) {
+            double orig = producto.getPrecioVenta();
+            return BigDecimal.valueOf(orig - (orig * (desc / 100.0))).setScale(2, RoundingMode.HALF_UP).doubleValue();
+        }
+        return null;
     }
 }

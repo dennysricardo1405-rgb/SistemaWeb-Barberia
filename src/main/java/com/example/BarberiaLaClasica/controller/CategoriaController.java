@@ -15,10 +15,20 @@ public class CategoriaController {
     @Autowired
     private CategoriaService categoriaService;
 
-    // Listar todo en la pantalla de gestión
+    // Listar todo en la pantalla de gestión con paginación
     @GetMapping
-    public String listarCategorias(Model model) {
-        model.addAttribute("categorias", categoriaService.listarTodas());
+    public String listarCategorias(Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("id").descending());
+        org.springframework.data.domain.Page<Categoria> categoriasPage = categoriaService.listarTodasPaginadas(pageable);
+
+        model.addAttribute("categoriasPage", categoriasPage);
+        model.addAttribute("categorias", categoriasPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", categoriasPage.getTotalPages());
+        model.addAttribute("totalItems", categoriasPage.getTotalElements());
+        model.addAttribute("size", size);
 
         // Listamos las principales activas por si el admin quiere crear una
         // subcategoría dentro de ellas

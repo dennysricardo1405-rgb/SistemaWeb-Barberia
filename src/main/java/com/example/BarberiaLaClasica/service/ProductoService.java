@@ -27,6 +27,10 @@ public class ProductoService {
         return productoRepository.findAll();
     }
 
+    public org.springframework.data.domain.Page<Producto> listarTodosPaginado(org.springframework.data.domain.Pageable pageable) {
+        return productoRepository.findAll(pageable);
+    }
+
     public List<Producto> listarActivos() {
         return productoRepository.findByActivoTrue();
     }

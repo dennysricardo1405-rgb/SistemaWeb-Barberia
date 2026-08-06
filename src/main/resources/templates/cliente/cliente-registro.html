@@ -108,8 +108,15 @@
  
                 <div class="col-12">
                     <label class="form-label">CORREO ELECTRÓNICO</label>
-                    <input type="email" name="correo" class="form-control"
-                           placeholder="tu@correo.com" required>
+                    <div class="input-group" style="gap: 0;">
+                        <input type="text" id="correoPrefix" class="form-control"
+                               placeholder="tunombre" required autocomplete="off"
+                               style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                        <span class="input-group-text bg-white text-dark fw-bold px-3 d-flex align-items-center"
+                              style="background-color:#ffffff !important; color:#212529 !important; border: 1px solid rgba(201,168,76,0.2) !important; border-top-left-radius: 0; border-bottom-left-radius: 0;">@gmail.com</span>
+                    </div>
+                    <input type="hidden" id="correoFinal" name="correo" required>
+                    <small style="color:var(--text-muted)">Solo se permiten cuentas @gmail.com</small>
                 </div>
  
                 <div class="col-12">

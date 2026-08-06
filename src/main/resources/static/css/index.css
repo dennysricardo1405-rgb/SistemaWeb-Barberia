@@ -840,6 +840,9 @@ body {
     overflow: hidden;
     transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
 .card-producto-premium:hover {
@@ -850,7 +853,10 @@ body {
 
 .img-container {
     height: 200px;
+    width: 100%;
     overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
 }
 
 .img-container img {
@@ -866,6 +872,9 @@ body {
 
 .cuerpo-detalle {
     padding: 18px 18px 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }
 
 .subcat-tag {
@@ -879,7 +888,21 @@ body {
     font-weight: 700;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 0;
+    align-self: flex-start;
+}
+
+.badge-stock-info {
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.badge-stock-info strong {
+    color: var(--gold);
 }
 
 .prod-titulo {
@@ -888,21 +911,31 @@ body {
     font-size: 1.05rem;
     font-weight: 700;
     margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.6rem;
 }
 
 .prod-desc-corta {
     color: var(--muted);
     font-size: 0.8rem;
-    line-height: 1.6;
-    margin-bottom: 0;
-    min-height: 38px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.4rem;
 }
 
 .prod-precio {
     font-family: var(--serif);
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: 1.25rem;
+    font-weight: 800;
     color: var(--gold);
+    line-height: 1.1;
 }
 
 .btn-agregar-carrito {
@@ -1536,6 +1569,18 @@ body {
     justify-content: space-between;
 }
 
+.prod-card-footer {
+    margin-top: auto;
+    width: 100%;
+}
+
+.wrapper-precios-prod {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 38px;
+}
+
 /* Badge Dorado Flotante de Descuento */
 .badge-promo-flotante {
     position: absolute;
@@ -1569,7 +1614,9 @@ body {
 
 /* Ajuste del precio tachado */
 .precio-original-text {
-    font-size: 0.8rem;
-    opacity: 0.4;
-    line-height: 1;
+    font-size: 0.78rem;
+    opacity: 0.45;
+    line-height: 1.2;
+    text-decoration: line-through;
+    color: rgba(255, 255, 255, 0.6);
 }

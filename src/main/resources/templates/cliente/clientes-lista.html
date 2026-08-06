@@ -84,12 +84,13 @@
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="fw-bold mb-0 text-white">
+                    <h2 class="fw-bold mb-0" style="color:#ff6b2b">
                         <i class="fa-solid fa-user-group me-2" style="color:#ff6b2b"></i>Clientes
                     </h2>
                     <small class="text-muted">Gestión de clientes registrados</small>
                 </div>
-                <button class="btn btn-naranja shadow-sm fw-bold px-3 rounded-2"
+                <button type="button" class="btn btn-naranja shadow-sm fw-bold px-3 rounded-2"
+                        onclick="abrirModalNuevo()"
                         data-bs-toggle="modal" data-bs-target="#modalNuevo">
                     <i class="fa-solid fa-user-plus me-2"></i> Nuevo Cliente
                 </button>
@@ -107,7 +108,7 @@
             </div>
 
             <div class="d-flex justify-content-end mb-4">
-                <form th:action="@{/admin/cliente}" method="get" class="col-md-4 col-12">
+                <form method="get" class="col-md-4 col-12">
                     <input type="hidden" name="size" id="current-size" th:value="${size}" />
                     <div class="search-box-container d-flex align-items-center shadow-sm">
                         <span class="search-icon px-3">
@@ -118,7 +119,7 @@
                                placeholder="Buscar por cliente, DNI..."
                                autocomplete="off">
                         <a th:if="${search != null and !search.isEmpty()}"
-                           th:href="@{/admin/cliente(size=${size})}"
+                           href="?"
                            class="btn border-0 text-muted px-3" title="Limpiar filtro">
                             <i class="fa-solid fa-xmark"></i>
                         </a>
@@ -136,9 +137,10 @@
                                     <th>DNI</th>
                                     <th>Teléfono</th>
                                     <th>Correo</th>
+                                    <th class="text-center">Visitas Totales</th>
                                     <th>Registro</th>
                                     <th>Estado</th>
-                                    <th>Acciones</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -146,42 +148,50 @@
                                     <td class="ps-4">
                                         <div class="d-flex align-items-center gap-3">
                                             <div class="cliente-avatar"
-                                                 th:text="${#strings.substring(c.nombres,0,1).toUpperCase()}">
+                                                 th:text="${c.nombres != null and !c.nombres.isEmpty() ? #strings.substring(c.nombres,0,1).toUpperCase() : '?'}">
                                             </div>
                                             <div>
                                                 <div class="fw-bold text-white"
-                                                     th:text="${c.nombres + ' ' + c.apellidos}"></div>
+                                                     th:text="${(c.nombres != null ? c.nombres : '') + ' ' + (c.apellidos != null ? c.apellidos : '')}"></div>
                                             </div>
                                         </div>
                                     </td>
                                     <td th:text="${c.dni}" class="fw-bold text-white"></td>
-                                    <td th:text="${c.telefono ?: '—'}"></td>
-                                    <td th:text="${c.correo ?: '—'}"></td>
-                                    <td th:text="${#temporals.format(c.fechaRegistro,'dd/MM/yyyy')}"></td>
+                                    <td th:text="${c.telefono != null and !c.telefono.isEmpty() ? c.telefono : '—'}"></td>
+                                    <td th:text="${c.correo != null and !c.correo.isEmpty() ? c.correo : '—'}"></td>
+                                    <td class="text-center">
+                                        <span class="badge bg-dark border border-secondary border-opacity-25 text-warning px-3 py-2 fw-semibold">
+                                            <i class="fa-solid fa-star me-1 text-warning"></i>
+                                            <span th:text="${(c.totalVisitas != null ? c.totalVisitas : 0) + ' visitas'}">0 visitas</span>
+                                        </span>
+                                    </td>
+                                    <td th:text="${c.fechaRegistro != null ? #temporals.format(c.fechaRegistro,'dd/MM/yyyy') : '—'}"></td>
                                     <td>
                                         <label class="switch mb-0">
                                             <input type="checkbox"
                                                    th:checked="${c.estado == 1}"
-                                                   th:data-url="'/admin/cliente/estado/' + ${c.id}"
+                                                   th:data-url="${#authorization.expression('hasRole(''ADMINISTRADOR'')') ? '/admin/cliente/estado/' + c.id : '/secretario/cliente/estado/' + c.id}"
                                                    class="status-switch">
                                             <span class="slider"></span>
                                         </label>
                                     </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-warning rounded-circle edit-client-btn"
+                                    <td class="text-center">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-warning rounded-circle edit-client-btn"
                                                 th:data-id="${c.id}"
-                                                th:data-dni="${c.dni}"
-                                                th:data-nombres="${c.nombres}"
-                                                th:data-apellidos="${c.apellidos}"
-                                                th:data-telefono="${c.telefono}"
-                                                th:data-correo="${c.correo}"
+                                                th:data-dni="${c.dni != null ? c.dni : ''}"
+                                                th:data-nombres="${c.nombres != null ? c.nombres : ''}"
+                                                th:data-apellidos="${c.apellidos != null ? c.apellidos : ''}"
+                                                th:data-telefono="${c.telefono != null ? c.telefono : ''}"
+                                                th:data-correo="${c.correo != null ? c.correo : ''}"
+                                                onclick="prepararEdicionCliente(this)"
                                                 title="Editar Cliente">
                                             <i class="fa-solid fa-pen"></i>
                                         </button>
                                     </td>
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(clientes)}">
-                                    <td colspan="7" class="text-center text-muted py-5">
+                                    <td colspan="8" class="text-center text-muted py-5">
                                         <i class="fa-solid fa-user-group fa-2x mb-3 d-block"
                                            style="color:#ff6b2b; opacity:0.3"></i>
                                         No se encontraron clientes con los criterios especificados.
@@ -204,17 +214,19 @@
                         </div>
 
                         <div class="d-flex align-items-center gap-1">
-                            <a th:href="@{/admin/cliente(page=${currentPage - 1}, size=${size}, search=${search})}"
+                            <a th:href="${'?page=' + (currentPage - 1) + '&size=' + size + (search != null and !search.isEmpty() ? '&search=' + search : '')}"
                                class="btn-pag" th:classappend="${currentPage == 0} ? ' disabled'">
                                 &larr; Anterior
                             </a>
-                            <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
-                                <a th:href="@{/admin/cliente(page=${i}, size=${size}, search=${search})}"
-                                   class="btn-pag" th:classappend="${i == currentPage} ? ' active'"
-                                   th:text="${i + 1}">
-                                </a>
+                            <th:block th:if="${totalPages > 0}">
+                                <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                                    <a th:href="${'?page=' + i + '&size=' + size + (search != null and !search.isEmpty() ? '&search=' + search : '')}"
+                                       class="btn-pag" th:classappend="${i == currentPage} ? ' active'"
+                                       th:text="${i + 1}">
+                                    </a>
+                                </th:block>
                             </th:block>
-                            <a th:href="@{/admin/cliente(page=${currentPage + 1}, size=${size}, search=${search})}"
+                            <a th:href="${'?page=' + (currentPage + 1) + '&size=' + size + (search != null and !search.isEmpty() ? '&search=' + search : '')}"
                                class="btn-pag" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'">
                                 Siguiente &rarr;
                             </a>
@@ -228,7 +240,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> <!-- Cierre de main-content -->
 
     <!-- ══════════════════════════════════════════ -->
     <!-- MODAL NUEVO CLIENTE                        -->
@@ -266,7 +278,7 @@
                                        class="form-control" maxlength="9" placeholder="9 dígitos">
                             </div>
 
-                            <!-- Nombres (readonly, lo llena la API) -->
+                            <!-- Nombres (readonly, lo llena RENIEC) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-uppercase">
                                     Nombres
@@ -277,7 +289,7 @@
                                        placeholder="Busca el DNI primero">
                             </div>
 
-                            <!-- Apellidos (readonly, lo llena la API) -->
+                            <!-- Apellidos (readonly, lo llena RENIEC) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-uppercase">
                                     Apellidos
@@ -291,8 +303,14 @@
                             <!-- Correo -->
                             <div class="col-12">
                                 <label class="form-label fw-bold small text-uppercase">Correo electrónico</label>
-                                <input type="email" id="correoInput" name="correo"
-                                       class="form-control" placeholder="cliente@gmail.com">
+                                <div class="input-group">
+                                    <input type="text" id="correoInput" name="correo"
+                                           class="form-control" placeholder="tunombre" autocomplete="off">
+                                    <span class="input-group-text bg-white text-dark fw-bold" style="background-color:#ffffff !important; color:#212529 !important; border:1px solid #ced4da;">@gmail.com</span>
+                                </div>
+                                <div class="form-text text-muted small mt-1">
+                                    Solo se permiten cuentas @gmail.com
+                                </div>
                             </div>
 
                             <!-- Info contraseña automática -->
@@ -371,8 +389,15 @@
                             <!-- Correo: editable -->
                             <div class="col-12">
                                 <label class="form-label fw-bold small text-uppercase">Correo electrónico</label>
-                                <input type="email" id="edit-correo" name="correo"
-                                       class="form-control" placeholder="cliente@gmail.com">
+                                <div class="input-group">
+                                    <input type="text" id="edit-correo-prefix"
+                                           class="form-control" placeholder="tunombre" autocomplete="off">
+                                    <span class="input-group-text bg-white text-dark fw-bold" style="background-color:#ffffff !important; color:#212529 !important; border:1px solid #ced4da;">@gmail.com</span>
+                                </div>
+                                <input type="hidden" id="edit-correo" name="correo">
+                                <div class="form-text text-muted small mt-1">
+                                    Solo se permiten cuentas @gmail.com
+                                </div>
                             </div>
 
                             <!-- ── Sección cambio de contraseña ── -->

@@ -134,6 +134,14 @@ function handleDrop(e) {
 document.addEventListener('DOMContentLoaded', () => {
     cargarPaginaPago();
 
+    // Limpiar carrito local al confirmar el pedido
+    const formPedido = document.getElementById('formPedido');
+    if (formPedido) {
+        formPedido.addEventListener('submit', () => {
+            localStorage.removeItem('carrito_barberia');
+        });
+    }
+
     // Configurar los listeners dinámicamente para evitar scripts inline en el HTML
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {

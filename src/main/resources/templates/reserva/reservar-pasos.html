@@ -65,19 +65,19 @@
             <p class="step-subtitle">Selecciona el servicio que deseas reservar</p>
             <div class="options-grid">
                 <div th:each="s : ${servicios}" class="option-card" th:data-id="${s.id}" th:data-nombre="${s.nombre}"
-                    th:data-precio="${promoHelper.calcularPrecioServicio(s)}" th:data-duracion="${s.duracionMinutos}"
+                    th:data-precio="${promoHelper.calcularPrecioServicio(s, clienteLogueado)}" th:data-duracion="${s.duracionMinutos}"
                     onclick="seleccionarServicio(this)">
                     <div class="option-icon"><i class="fa-solid fa-cut"></i></div>
                     <div class="option-name" th:text="${s.nombre}">Corte Clásico</div>
                     <div class="option-detail" th:text="${s.duracionMinutos} + ' min'">30 min</div>
 
                     <div>
-                        <small th:if="${promoHelper.calcularPrecioServicio(s) < s.precio.doubleValue()}"
+                        <small th:if="${promoHelper.calcularPrecioServicio(s, clienteLogueado) < s.precio.doubleValue()}"
                             style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.8rem; display: block;"
                             th:text="'S/. ' + ${s.precio}"></small>
 
                         <div class="option-price"
-                            th:text="'S/. ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioServicio(s), 1, 2)}">
+                            th:text="'S/. ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioServicio(s, clienteLogueado), 1, 2)}">
                             S/. 25.00</div>
                     </div>
                 </div>

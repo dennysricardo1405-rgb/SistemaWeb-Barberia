@@ -31,9 +31,17 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE consumos_silla MODIFY COLUMN producto_id BIGINT NULL");
+        } catch (Exception ignored) {
+        }
 
         // 1. Crear la lista completa de permisos basados en tu base de datos local
         crearPermisoSiNoExiste("GESTION_USUARIOS", "Gestión de Personal", "Administrar usuarios");

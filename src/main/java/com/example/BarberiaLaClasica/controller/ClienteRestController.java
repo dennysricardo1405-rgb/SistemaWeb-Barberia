@@ -36,15 +36,31 @@ public class ClienteRestController {
     @PostMapping("/guardar-rapido")
     public ResponseEntity<?> guardarRapido(@RequestBody Map<String, String> datos) {
         try {
+            String dni = datos.get("dni") != null ? datos.get("dni").trim() : "";
+            String nombres = datos.get("nombres") != null ? datos.get("nombres").trim() : "";
+            String apellidos = datos.get("apellidos") != null ? datos.get("apellidos").trim() : "";
+            String telefono = datos.get("telefono") != null ? datos.get("telefono").trim() : "";
+            String correo = datos.get("correo") != null ? datos.get("correo").trim() : "";
+
+            if (!dni.matches("^\\d{8}$")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El DNI debe tener 8 dígitos numéricos."));
+            }
+            if (nombres.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Los nombres son obligatorios."));
+            }
+            if (apellidos.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Los apellidos son obligatorios."));
+            }
+
             Cliente c = new Cliente();
-            c.setDni(datos.get("dni"));
-            c.setNombres(datos.get("nombres"));
-            c.setApellidos(datos.get("apellidos"));
-            c.setTelefono(datos.get("telefono"));
-            c.setCorreo(datos.get("correo"));
+            c.setDni(dni);
+            c.setNombres(nombres);
+            c.setApellidos(apellidos);
+            c.setTelefono(telefono.isEmpty() ? null : telefono);
+            c.setCorreo(correo.isEmpty() ? null : correo);
 
             // Password predeterminada: B + dni
-            String passwordPlana = "B" + datos.get("dni");
+            String passwordPlana = "B" + dni;
             Cliente guardado = clienteService.crearDesdeAdmin(c, passwordPlana);
 
             return ResponseEntity.ok(Map.of(

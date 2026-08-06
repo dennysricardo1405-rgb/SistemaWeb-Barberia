@@ -69,11 +69,20 @@
                             </div>
                         </div>
 
+                        <div class="mb-3" id="wrapperPrecioFinalCalculado">
+                            <label class="form-label form-label-gold">PRECIO FINAL ESTIMADO (CON DESCUENTO)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-warning border-secondary">S/</span>
+                                <input type="text" id="promoPrecioFinalCalculado" class="form-control input-dark fw-bold text-warning" readonly placeholder="Selecciona un servicio/producto para calcular...">
+                            </div>
+                            <small class="text-white-50" style="font-size:0.75rem;" id="promoHintPrecioOriginal"></small>
+                        </div>
+
                         <div class="mb-3 grupo-flujo-dinamico" id="wrapperServicio">
                             <label class="form-label form-label-gold">SELECCIONA EL SERVICIO *</label>
-                            <select name="servicioId" id="promoServicioId" class="form-select input-dark">
+                            <select name="servicioId" id="promoServicioId" class="form-select input-dark" onchange="recalcularPrecioFinalVistaAdmin()">
                                 <option value="">-- Seleccionar Servicio --</option>
-                                <option th:each="s : ${servicios}" th:value="${s.id}"
+                                <option th:each="s : ${servicios}" th:value="${s.id}" th:data-precio="${s.precio}"
                                     th:text="${s.nombre} + ' (S/ ' + ${s.precio} + ')'"></option>
                             </select>
                         </div>
@@ -119,18 +128,17 @@
                                 required>
                         </div>
 
-                        <div class="mb-4">
+                        <div class="mb-4" id="wrapperVisitas">
                             <label class="form-label form-label-gold">MÍNIMO DE VISITAS REQUERIDAS
-                                (Fidelización)</label>
+                                (Fidelización de Servicios)</label>
                             <input type="number" name="minimoVisitasRequeridas" id="promoVisitas"
                                 class="form-control input-dark" min="0" value="0">
-                            <small class="text-white-50 text-opacity-50" style="font-size:0.75rem;">Deja en 0 para que
-                                aplique a todos.</small>
+                            <small class="text-white-50 text-opacity-50" style="font-size:0.75rem;">Aplica solo para servicios. Deja en 0 para todos.</small>
                         </div>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-warning flex-grow-1 text-dark fw-bold">Guardar
-                                Configuration</button>
+                                Configuración</button>
                             <button type="button" class="btn btn-outline-secondary text-white"
                                 onclick="limpiarFormulario()">Cancelar</button>
                         </div>
@@ -149,6 +157,7 @@
                                     <th>Promo / Motivo</th>
                                     <th>Aplica a</th>
                                     <th>Descuento</th>
+                                    <th>Precio Final</th>
                                     <th>Vigencia</th>
                                     <th class="text-center">Estado</th>
                                     <th class="text-center">Acciones</th>
@@ -156,7 +165,7 @@
                             </thead>
                             <tbody>
                                 <tr th:if="${#lists.isEmpty(promociones)}">
-                                    <td colspan="6" class="text-center text-muted py-4">No hay reglas de promoción
+                                    <td colspan="7" class="text-center text-muted py-4">No hay reglas de promoción
                                         configuradas.</td>
                                 </tr>
                                 <tr th:each="p : ${promociones}">
@@ -173,8 +182,18 @@
                                             th:text="${p.producto.nombre}"></small>
                                         <small class="d-block text-white-50" th:if="${p.categoria != null}"
                                             th:text="'Categoría: ' + ${p.categoria.nombre}"></small>
+                                        <span th:if="${p.minimoVisitasRequeridas > 0}" class="badge bg-dark border border-warning text-warning d-inline-block mt-1 small">
+                                            <i class="fa-solid fa-user-check me-1"></i>Mín. <span th:text="${p.minimoVisitasRequeridas}"></span> visitas
+                                        </span>
                                     </td>
                                     <td th:text="${p.porcentajeDescuento} + '%'"></td>
+                                    <td>
+                                        <span th:if="${p.precioFinalEstimado != null}" class="badge bg-warning text-dark fw-bold fs-6"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(p.precioFinalEstimado, 1, 2)}"></span>
+                                        <small th:if="${p.servicio != null}" class="d-block text-white-50" th:text="'Antes: S/ ' + ${#numbers.formatDecimal(p.servicio.precio, 1, 2)}"></small>
+                                        <small th:if="${p.producto != null}" class="d-block text-white-50" th:text="'Antes: S/ ' + ${#numbers.formatDecimal(p.producto.precioVenta, 1, 2)}"></small>
+                                        <span th:if="${p.precioFinalEstimado == null}" class="text-white-50 small">-</span>
+                                    </td>
                                     <td>
                                         <small class="d-block text-white-50"
                                             th:text="'Inicia: ' + ${#temporals.format(p.fechaInicio, 'dd/MM/yyyy HH:mm')}"></small>

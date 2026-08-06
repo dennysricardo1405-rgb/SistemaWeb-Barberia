@@ -16,9 +16,16 @@ public class ConsumoSilla {
     private SillaSession session;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "producto_id", nullable = false)
+    @JoinColumn(name = "producto_id", nullable = true)
     private Producto producto;
 
-    private int cantidad;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "servicio_id", nullable = true)
+    private Servicio servicio;
+
+    @Column(name = "tipo", length = 20)
+    private String tipo = "PRODUCTO";
+
+    private int cantidad = 1;
     private double subtotal;
 }

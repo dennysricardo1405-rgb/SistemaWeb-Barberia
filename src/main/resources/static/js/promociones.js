@@ -9,7 +9,49 @@ document.addEventListener("DOMContentLoaded", () => {
     const inputHiddenId = document.getElementById("promoProductoId");
     const inputTextoVisible = document.getElementById("promoProductoTexto");
 
-    // ── 1. VALIDACIÓN DE CALENDARIO (No días pasados, máximo 4 meses) ──
+    // ── 1. VALIDACIÓN DE FORMULARIO AL ENVIAR (SUBMIT) ──
+    if (form) {
+        form.addEventListener("submit", function (e) {
+            const tipo = document.getElementById("promoTipo").value;
+            const servicioId = document.getElementById("promoServicioId").value;
+            const alcanceProd = document.getElementById("filtroAlcanceProducto") ? document.getElementById("filtroAlcanceProducto").value : "ESPECIFICO";
+            const productoId = document.getElementById("promoProductoId") ? document.getElementById("promoProductoId").value : "";
+            const categoriaId = document.getElementById("promoCategoriaId") ? document.getElementById("promoCategoriaId").value : "";
+            const inicio = inputInicio ? inputInicio.value : "";
+            const fin = inputFin ? inputFin.value : "";
+
+            if (tipo === "SERVICIO" && (!servicioId || servicioId.trim() === "")) {
+                e.preventDefault();
+                alert("Por favor, selecciona el Servicio al cual aplica esta promoción.");
+                return false;
+            }
+
+            if (tipo === "PRODUCTO") {
+                if (alcanceProd === "ESPECIFICO" && (!productoId || productoId.trim() === "")) {
+                    e.preventDefault();
+                    alert("Por favor, selecciona un Producto específico haciendo clic en 'Buscar'.");
+                    return false;
+                }
+                if (alcanceProd === "CATEGORIA" && (!categoriaId || categoriaId.trim() === "")) {
+                    e.preventDefault();
+                    alert("Por favor, selecciona una Categoría para aplicar la promoción.");
+                    return false;
+                }
+            }
+
+            if (inicio && fin) {
+                const dateInicio = new Date(inicio);
+                const dateFin = new Date(fin);
+                if (dateFin <= dateInicio) {
+                    e.preventDefault();
+                    alert("La fecha y hora de fin debe ser posterior a la fecha de inicio.");
+                    return false;
+                }
+            }
+        });
+    }
+
+    // ── 1.1 VALIDACIÓN DE CALENDARIO (No días pasados, máximo 4 meses) ──
     if (inputInicio && inputFin) {
         const ahora = new Date();
         const offset = ahora.getTimezoneOffset() * 60000;
@@ -57,6 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // Asignamos los valores a los inputs del formulario
             if (inputHiddenId) inputHiddenId.value = id;
             if (inputTextoVisible) inputTextoVisible.value = `${nombre} (S/ ${precio})`;
+
+            recalcularPrecioFinalVistaAdmin();
 
             // Cerramos el modal de forma limpia usando la API de Bootstrap
             const modalElement = document.getElementById('modalBuscarProducto');
@@ -120,6 +164,8 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (tipo === "SERVICIO") {
                 document.getElementById("promoServicioId").value = servicioId;
             }
+
+            recalcularPrecioFinalVistaAdmin();
         });
     });
 });
@@ -129,19 +175,26 @@ function alternarCamposFlujo() {
     const tipo = document.getElementById("promoTipo").value;
     const wrapperServicio = document.getElementById("wrapperServicio");
     const wrapperProducto = document.getElementById("wrapperProducto");
+    const wrapperVisitas  = document.getElementById("wrapperVisitas");
+    const inputVisitas    = document.getElementById("promoVisitas");
 
     if (tipo === "SERVICIO") {
         if (wrapperServicio) wrapperServicio.classList.remove("d-none");
         if (wrapperProducto) wrapperProducto.classList.add("d-none");
+        if (wrapperVisitas)  wrapperVisitas.classList.remove("d-none");
         document.getElementById("promoProductoId").value = "";
         document.getElementById("promoProductoTexto").value = "";
         document.getElementById("promoCategoriaId").value = "";
     } else {
         if (wrapperServicio) wrapperServicio.classList.add("d-none");
         if (wrapperProducto) wrapperProducto.classList.remove("d-none");
+        if (wrapperVisitas)  wrapperVisitas.classList.add("d-none");
+        if (inputVisitas)    inputVisitas.value = "0";
         document.getElementById("promoServicioId").value = "";
         alternarAlcanceProducto();
     }
+
+    recalcularPrecioFinalVistaAdmin();
 }
 
 function alternarAlcanceProducto() {
@@ -167,9 +220,11 @@ function limpiarFormulario() {
     document.getElementById("promoProductoId").value = "";
     document.getElementById("promoProductoTexto").value = "";
     document.getElementById("formTitle").textContent = "Nueva Promoción";
-    document.getElementById("errorDescuento").style.display = "none";
+    const err = document.getElementById("errorDescuentoHTML");
+    if (err) err.style.display = "none";
     document.getElementById("promoPorcentaje").classList.remove("is-invalid");
     alternarCamposFlujo();
+    recalcularPrecioFinalVistaAdmin();
 }
 function abrirModalEliminar(urlUrl) {
     document.getElementById('btnConfirmarEliminarHref').setAttribute('href', urlUrl);
@@ -194,5 +249,47 @@ function validarPorcentajeEntrada(input) {
     // 3. Evitamos que se quede en vacío o en 0 al perder el foco si deseas un mínimo de 1
     if (input.value !== '' && valor < 1) {
         input.value = 1;
+    }
+
+    recalcularPrecioFinalVistaAdmin();
+}
+
+function recalcularPrecioFinalVistaAdmin() {
+    const tipo = document.getElementById("promoTipo") ? document.getElementById("promoTipo").value : "SERVICIO";
+    const porcentajeInput = document.getElementById("promoPorcentaje");
+    const porcentaje = porcentajeInput && porcentajeInput.value ? parseFloat(porcentajeInput.value) : 0;
+    const inputPrecioFinal = document.getElementById("promoPrecioFinalCalculado");
+    const hintPrecioOriginal = document.getElementById("promoHintPrecioOriginal");
+
+    if (!inputPrecioFinal) return;
+
+    let precioOriginal = 0;
+
+    if (tipo === "SERVICIO") {
+        const selectServicio = document.getElementById("promoServicioId");
+        if (selectServicio && selectServicio.selectedIndex > 0) {
+            const opt = selectServicio.options[selectServicio.selectedIndex];
+            precioOriginal = parseFloat(opt.dataset.precio || 0);
+        }
+    } else if (tipo === "PRODUCTO") {
+        const prodId = document.getElementById("promoProductoId") ? document.getElementById("promoProductoId").value : "";
+        if (prodId) {
+            const item = document.querySelector(`.item-prod-modal[data-id="${prodId}"]`);
+            if (item) {
+                precioOriginal = parseFloat(item.dataset.precio || 0);
+            }
+        }
+    }
+
+    if (precioOriginal > 0 && porcentaje > 0) {
+        const desc = precioOriginal * (porcentaje / 100.0);
+        const finalCalculado = Math.max(0, precioOriginal - desc);
+        inputPrecioFinal.value = finalCalculado.toFixed(2);
+        if (hintPrecioOriginal) {
+            hintPrecioOriginal.textContent = `Precio original: S/ ${precioOriginal.toFixed(2)} (Ahorras: S/ ${desc.toFixed(2)})`;
+        }
+    } else {
+        inputPrecioFinal.value = "";
+        if (hintPrecioOriginal) hintPrecioOriginal.textContent = "";
     }
 }
