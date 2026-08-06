@@ -3,7 +3,9 @@ package com.example.BarberiaLaClasica.service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.BarberiaLaClasica.model.Barbero;
 import com.example.BarberiaLaClasica.model.Cita;
+import com.example.BarberiaLaClasica.model.Cliente;
 import com.example.BarberiaLaClasica.model.ConsumoSilla;
 import com.example.BarberiaLaClasica.model.DetalleNotaVenta;
 import com.example.BarberiaLaClasica.model.NotaVenta;
@@ -54,6 +57,8 @@ public class RecepcionService {
     private NotaVentaRepository notaVentaRepository;
     @Autowired
     private PromocionHelper promocionHelper;
+    @Autowired
+    private ClienteService clienteService;
     @Autowired
     private HistorialInventarioRepository historialInventarioRepository; // ← Inyectamos el Kardex aquí
 
@@ -151,11 +156,24 @@ public class RecepcionService {
         Producto producto = productoRepository.findById(productoId)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
 
-        if (producto.getStock() < cantidad)
-            throw new RuntimeException("Stock insuficiente: solo hay " + producto.getStock());
+        int cantidadExistente = consumoRepository.findBySessionId(session.getId()).stream()
+                .filter(c -> c.getProducto() != null && c.getProducto().getId().equals(productoId))
+                .mapToInt(ConsumoSilla::getCantidad)
+                .sum();
+
+        int cantidadTotalDeseada = cantidadExistente + cantidad;
+
+        if (producto.getStock() < cantidadTotalDeseada) {
+            if (cantidadExistente > 0) {
+                throw new RuntimeException("Stock insuficiente: solo hay " + producto.getStock() + 
+                        " en almacén y ya agregaste " + cantidadExistente + " a la silla.");
+            } else {
+                throw new RuntimeException("Stock insuficiente: solo hay " + producto.getStock() + " disponible.");
+            }
+        }
 
         consumoRepository.findBySessionId(session.getId()).stream()
-                .filter(c -> c.getProducto().getId().equals(productoId))
+                .filter(c -> c.getProducto() != null && c.getProducto().getId().equals(productoId))
                 .findFirst()
                 .ifPresentOrElse(c -> {
                     c.setCantidad(c.getCantidad() + cantidad);
@@ -165,10 +183,36 @@ public class RecepcionService {
                     ConsumoSilla nuevo = new ConsumoSilla();
                     nuevo.setSession(session);
                     nuevo.setProducto(producto);
+                    nuevo.setTipo("PRODUCTO");
                     nuevo.setCantidad(cantidad);
                     nuevo.setSubtotal(cantidad * producto.getPrecioVenta());
                     consumoRepository.save(nuevo);
                 });
+    }
+
+    // ── Agregar servicio extra ───────────────────────────────────────────────
+    @Transactional
+    public void agregarServicio(Long barberoId, Long servicioId) {
+        SillaSession session = getSessionActiva(barberoId)
+                .orElseThrow(() -> new RuntimeException("No hay sesión activa"));
+
+        Servicio servicio = servicioRepository.findById(servicioId)
+                .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
+
+        Cliente clienteAtencion = session.getCliente();
+        if (clienteAtencion != null) {
+            clienteAtencion.setTotalVisitas(clienteService.calcularTotalVisitas(clienteAtencion));
+        }
+
+        double precioRegular = servicio.getPrecio().doubleValue();
+
+        ConsumoSilla nuevo = new ConsumoSilla();
+        nuevo.setSession(session);
+        nuevo.setServicio(servicio);
+        nuevo.setTipo("SERVICIO");
+        nuevo.setCantidad(1);
+        nuevo.setSubtotal(precioRegular);
+        consumoRepository.save(nuevo);
     }
 
     // ── Quitar consumo ────────────────────────────────────────────────────────
@@ -203,15 +247,15 @@ public class RecepcionService {
 
         List<DetalleNotaVenta> detalles = new ArrayList<>();
 
-        // ── 1. CONDICIONAL DE PROMOCIÓN PARA EL SERVICIO ──────────────────
-        double precioServicioOriginal = session.getServicio().getPrecio().doubleValue();
-        double precioServicioFinal = precioServicioOriginal;
+        com.example.BarberiaLaClasica.model.Cliente clienteAtencion = session.getCliente();
+        if (clienteAtencion != null) {
+            clienteAtencion.setTotalVisitas(clienteService.calcularTotalVisitas(clienteAtencion));
+        }
 
-        if (session.getCita() != null && session.getCita().getId() != null) {
-            Cita cita = session.getCita();
-            if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
-                precioServicioFinal = promocionHelper.calcularPrecioServicio(session.getServicio());
-            }
+        // ── 1. PRECIO DEL SERVICIO PRINCIPAL (Promoción solo si es Cita Web) ─────────
+        double precioServicioFinal = session.getServicio().getPrecio().doubleValue();
+        if (session.getCita() != null && session.getCita().getTotalPrecio() != null) {
+            precioServicioFinal = session.getCita().getTotalPrecio().doubleValue();
         }
 
         DetalleNotaVenta linServicio = new DetalleNotaVenta();
@@ -223,60 +267,73 @@ public class RecepcionService {
         linServicio.setTipo("SERVICIO");
         detalles.add(linServicio);
 
-        // ── 2. CONDICIONAL DE PROMOCIÓN PARA PRODUCTOS ────────────────────
+        // ── 2. CONDICIONAL DE PROMOCIÓN Y REGISTRO DE CONSUMOS ────────────
         for (ConsumoSilla c : consumos) {
-            double precioProductoOriginal = c.getProducto().getPrecioVenta();
-            double precioProductoFinal = precioProductoOriginal;
+            if (c.getProducto() != null) {
+                double precioProductoFinal = c.getProducto().getPrecioVenta();
+                double subtotalProductoFinal = precioProductoFinal * c.getCantidad();
 
-            if (session.getCita() != null && session.getCita().getId() != null) {
-                Cita cita = session.getCita();
-                if (cita.getMontoYape() != null && cita.getMontoYape().compareTo(java.math.BigDecimal.ZERO) > 0) {
-                    precioProductoFinal = promocionHelper.calcularPrecioProducto(c.getProducto());
-                }
+                DetalleNotaVenta lin = new DetalleNotaVenta();
+                lin.setNotaVenta(nota);
+                lin.setDescripcion(c.getProducto().getNombre());
+                lin.setCantidad(c.getCantidad());
+                lin.setPrecioUnitario(precioProductoFinal);
+                lin.setSubtotal(subtotalProductoFinal);
+                lin.setTipo("PRODUCTO");
+                detalles.add(lin);
+
+                // Descuento de Stock físico
+                Producto p = c.getProducto();
+                p.setStock(p.getStock() - c.getCantidad());
+                productoRepository.save(p);
+
+                // Kardex
+                HistorialInventario movimiento = new HistorialInventario();
+                movimiento.setProducto(p);
+                movimiento.setTipoMovimiento("SALIDA");
+                movimiento.setCantidad(c.getCantidad());
+                movimiento.setStockResultante(p.getStock());
+                movimiento.setMotivo("Venta en Caja - Atendido por Barbero: " + 
+                        (session.getBarbero() != null ? session.getBarbero().getNombre() : "General"));
+                
+                historialInventarioRepository.save(movimiento);
+            } else if (c.getServicio() != null) {
+                double precioServicioExtra = c.getServicio().getPrecio().doubleValue();
+
+                DetalleNotaVenta lin = new DetalleNotaVenta();
+                lin.setNotaVenta(nota);
+                lin.setDescripcion(c.getServicio().getNombre());
+                lin.setCantidad(1);
+                lin.setPrecioUnitario(precioServicioExtra);
+                lin.setSubtotal(precioServicioExtra);
+                lin.setTipo("SERVICIO");
+                detalles.add(lin);
             }
-
-            double subtotalProductoFinal = precioProductoFinal * c.getCantidad();
-
-            DetalleNotaVenta lin = new DetalleNotaVenta();
-            lin.setNotaVenta(nota);
-            lin.setDescripcion(c.getProducto().getNombre());
-            lin.setCantidad(c.getCantidad());
-            lin.setPrecioUnitario(precioProductoFinal);
-            lin.setSubtotal(subtotalProductoFinal);
-            lin.setTipo("PRODUCTO");
-            detalles.add(lin);
-
-            // Descuento de Stock físico
-            Producto p = c.getProducto();
-            p.setStock(p.getStock() - c.getCantidad());
-            productoRepository.save(p);
-
-            // ── 📦 REGISTRO AUTOMÁTICO EN EL KARDEX (SALIDA DE PRODUCTO) ──
-            HistorialInventario movimiento = new HistorialInventario();
-            movimiento.setProducto(p);
-            movimiento.setTipoMovimiento("SALIDA");
-            movimiento.setCantidad(c.getCantidad());
-            movimiento.setStockResultante(p.getStock()); // Registra el stock exacto que queda en el almacén
-            movimiento.setMotivo("Venta en Caja - Atendido por Barbero: " + 
-                    (session.getBarbero() != null ? session.getBarbero().getNombre() : "General"));
-            
-            historialInventarioRepository.save(movimiento);
         }
 
-        // ── 3. Cálculo Final de Totales ───────────────────────────────────
+        // ── 3. Cálculo Final de Totales y Estructura Financiera ──────────
         double total = detalles.stream().mapToDouble(DetalleNotaVenta::getSubtotal).sum();
         nota.setTotal(total);
 
+        double adelantoPrevio = 0.0;
+        if (session.getCita() != null && session.getCita().getMontoYape() != null) {
+            adelantoPrevio = session.getCita().getMontoYape().doubleValue();
+        }
+
+        double saldoPendienteEnSilla = Math.max(0, total - adelantoPrevio);
+
         if ("EFECTIVO".equalsIgnoreCase(metodoPago)) {
-            nota.setMontoEfectivo(total);
-            nota.setMontoYape(0.0);
+            nota.setMontoYape(adelantoPrevio);
+            nota.setMontoEfectivo(saldoPendienteEnSilla);
         } else if ("YAPE".equalsIgnoreCase(metodoPago)) {
-            nota.setMontoEfectivo(0.0);
-            nota.setMontoYape(total);
+            double cobradoYapeEnSilla = (montoYape > 0 && montoYape <= total) ? montoYape : saldoPendienteEnSilla;
+            nota.setMontoYape(adelantoPrevio + cobradoYapeEnSilla);
+            nota.setMontoEfectivo(Math.max(0, total - nota.getMontoYape()));
             nota.setCodigoYape(codigoYape);
         } else {
-            nota.setMontoYape(montoYape);
-            nota.setMontoEfectivo(Math.max(0, total - montoYape));
+            double cobradoYapeEnSilla = montoYape > 0 ? montoYape : saldoPendienteEnSilla;
+            nota.setMontoYape(adelantoPrevio + cobradoYapeEnSilla);
+            nota.setMontoEfectivo(Math.max(0, total - nota.getMontoYape()));
             nota.setCodigoYape(codigoYape);
         }
 
@@ -309,5 +366,85 @@ public class RecepcionService {
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
 
         sessionRepository.actualizarCliente(session.getId(), clienteId);
+    }
+
+    public List<NotaVenta> listarNotasPorRango(java.time.LocalDateTime inicio, java.time.LocalDateTime fin) {
+        return notaVentaRepository.findByFechaBetween(inicio, fin);
+    }
+
+    public Page<NotaVenta> listarNotasPorRangoPaginadas(java.time.LocalDateTime inicio, java.time.LocalDateTime fin, Pageable pageable) {
+        return notaVentaRepository.findByFechaBetween(inicio, fin, pageable);
+    }
+
+    // ── PROCESAR VENTA DIRECTA DE PRODUCTOS (RECEPCIÓN / CAJA) ─────────────────
+    @Transactional
+    public NotaVenta procesarVentaDirectaProductos(
+            Long clienteId,
+            List<Map<String, Object>> items,
+            String metodoPago,
+            double montoEfectivo,
+            double montoYape,
+            String codigoYape) {
+
+        NotaVenta nota = new NotaVenta();
+        if (clienteId != null && clienteId > 0) {
+            Cliente c = clienteRepository.findById(clienteId).orElse(null);
+            nota.setCliente(c);
+            if (c != null) {
+                c.setTotalVisitas(clienteService.calcularTotalVisitas(c));
+            }
+        }
+
+        nota.setMetodoPago(metodoPago != null ? metodoPago : "EFECTIVO");
+        nota.setMontoEfectivo(montoEfectivo);
+        nota.setMontoYape(montoYape);
+        nota.setCodigoYape(codigoYape);
+
+        double totalNota = 0.0;
+        List<DetalleNotaVenta> detalles = new ArrayList<>();
+
+        for (Map<String, Object> item : items) {
+            Long productoId = Long.valueOf(item.get("productoId").toString());
+            int cantidad = Integer.parseInt(item.get("cantidad").toString());
+
+            Producto p = productoRepository.findById(productoId)
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoId));
+
+            if (p.getStock() < cantidad) {
+                throw new RuntimeException("Stock insuficiente para: " + p.getNombre() + " (Stock actual: " + p.getStock() + ")");
+            }
+
+            double precioUnitario = p.getPrecioVenta();
+            double subtotal = precioUnitario * cantidad;
+            totalNota += subtotal;
+
+            // Descuento de stock
+            p.setStock(p.getStock() - cantidad);
+            productoRepository.save(p);
+
+            // Registro de Kardex
+            HistorialInventario kardex = new HistorialInventario();
+            kardex.setProducto(p);
+            kardex.setTipoMovimiento("SALIDA");
+            kardex.setCantidad(cantidad);
+            kardex.setStockResultante(p.getStock());
+            kardex.setMotivo("Venta Directa de Producto en Recepción");
+            historialInventarioRepository.save(kardex);
+
+            // Detalle de la nota de venta
+            DetalleNotaVenta det = new DetalleNotaVenta();
+            det.setNotaVenta(nota);
+            det.setDescripcion(p.getNombre());
+            det.setCantidad(cantidad);
+            det.setPrecioUnitario(precioUnitario);
+            det.setSubtotal(subtotal);
+            det.setTipo("PRODUCTO");
+            detalles.add(det);
+        }
+
+        nota.setTotal(totalNota);
+        nota.setDetalles(detalles);
+
+        return notaVentaRepository.save(nota);
     }
 }

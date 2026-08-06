@@ -35,6 +35,10 @@ public class CitaService {
     private BarberoRepository barberoRepository;
     @Autowired
     private ServicioRepository servicioRepository;
+    @Autowired
+    private PromocionHelper promocionHelper;
+    @Autowired
+    private ClienteService clienteService;
 
     @Autowired
     private JavaMailSender mailSender;
@@ -99,7 +103,11 @@ public class CitaService {
         cita.setFecha(fecha);
         cita.setHoraInicio(horaInicio);
         cita.setHoraFin(horaFin);
-        cita.setTotalPrecio(servicio.getPrecio());
+        if (cliente != null) {
+            cliente.setTotalVisitas(clienteService.calcularTotalVisitas(cliente));
+        }
+        double precioFinalServicio = promocionHelper.calcularPrecioServicio(servicio, cliente);
+        cita.setTotalPrecio(BigDecimal.valueOf(precioFinalServicio));
         cita.setComprobantePago(nombreArchivo);
 
         // Se inicializan en blanco, el secretario rellenará los campos reales usando el modal interactivo

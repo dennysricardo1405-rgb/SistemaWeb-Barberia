@@ -33,6 +33,10 @@ public class ClienteController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("fechaRegistro").descending());
         Page<Cliente> clientesPage = clienteService.listarTodosPaginado(pageable, search);
 
+        for (Cliente c : clientesPage.getContent()) {
+            c.setTotalVisitas(clienteService.calcularTotalVisitas(c));
+        }
+
         model.addAttribute("clientesPage", clientesPage);
         model.addAttribute("clientes", clientesPage.getContent());
         model.addAttribute("currentPage", page);

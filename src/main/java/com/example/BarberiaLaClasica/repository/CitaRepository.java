@@ -21,6 +21,9 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
         // Historial de citas de un cliente ordenado por fecha descendente
         List<Cita> findByClienteOrderByFechaDescHoraInicioDesc(Cliente cliente);
 
+        // Contar citas de un cliente por estados (ej: atendida/completada)
+        long countByClienteAndEstadoIn(Cliente cliente, List<Integer> estados);
+
         // Verificar si un horario ya está ocupado para un barbero
         @Query("""
                             SELECT COUNT(c) > 0 FROM Cita c
@@ -108,4 +111,7 @@ List<Cita> findByEstadoAndFechaBetween(
     @Param("inicio") LocalDate inicio, 
     @Param("fin") LocalDate fin
 );
+
+    @Query("SELECT COUNT(c) FROM Cita c WHERE c.cliente.id = :clienteId AND c.servicio.id = :servicioId AND c.estado IN (1, 2, 3)")
+    long contarCitasPorClienteYServicio(@Param("clienteId") Long clienteId, @Param("servicioId") Long servicioId);
 }

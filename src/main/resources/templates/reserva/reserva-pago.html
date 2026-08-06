@@ -51,12 +51,12 @@
                         style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px;">
                         <span class="resumen-label">Monto Final</span>
                         <div>
-                            <span th:if="${precioFinalServicio < servicio?.precio?.doubleValue()}"
+                            <span th:if="${precioFinalServicio != null and servicio != null and precioFinalServicio < servicio.precio.doubleValue()}"
                                 style="text-decoration: line-through; color: rgba(255,255,255,0.3); font-size: 0.85rem; margin-right: 8px;"
                                 th:text="'S/. ' + ${servicio?.precio}"></span>
 
                             <span class="resumen-value resumen-total"
-                                th:text="'S/. ' + ${#numbers.formatDecimal(precioFinalServicio, 1, 2)}">S/. 0.00</span>
+                                th:text="'S/. ' + ${#numbers.formatDecimal(precioFinalServicio != null ? precioFinalServicio : (servicio != null ? servicio.precio.doubleValue() : 0), 1, 2)}">S/. 0.00</span>
                         </div>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
                             class="fa-solid fa-mobile-screen-button me-2"></i>Paga con Yape</div>
 
                     <div class="yape-sub" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; margin: 8px 0 16px;"
-                        th:text="'Transfiere el 25% (S/. ' + ${#numbers.formatDecimal(precioFinalServicio * 0.25, 1, 2)} + ') del monto total para confirmar tu cita'">
+                        th:text="'Transfiere el 25% (S/. ' + ${#numbers.formatDecimal((precioFinalServicio != null ? precioFinalServicio : (servicio != null ? servicio.precio.doubleValue() : 0)) * 0.25, 1, 2)} + ') del monto total para confirmar tu cita'">
                         Transfiere el 25% para confirmar tu cita
                     </div>
 

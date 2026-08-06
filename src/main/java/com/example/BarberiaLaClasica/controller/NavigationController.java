@@ -70,10 +70,22 @@ public class NavigationController {
     private DetalleNotaVentaRepository detalleNotaVentaRepository;
     @Autowired
     private PedidoOnlineRepository pedidoOnlineRepository;
-    @GetMapping("/")
-    public String index(Model model) {
-        List<Producto> productosWeb = productoRepository.findByActivoTrue();
+    @Autowired
+    private com.example.BarberiaLaClasica.service.ClienteService clienteService;
 
+    @GetMapping("/")
+    public String index(Model model, java.security.Principal principal) {
+        List<Producto> productosWeb = productoRepository.findProductosParaCatalogoPublico("Productos de Barbería");
+
+        com.example.BarberiaLaClasica.model.Cliente clienteLogueado = null;
+        if (principal != null) {
+            clienteLogueado = clienteRepository.findByCorreo(principal.getName()).orElse(null);
+            if (clienteLogueado != null) {
+                clienteLogueado.setTotalVisitas(clienteService.calcularTotalVisitas(clienteLogueado));
+            }
+        }
+
+        model.addAttribute("clienteLogueado", clienteLogueado);
         model.addAttribute("productosBarberia", productosWeb);
         model.addAttribute("servicios", servicioRepository.findByEstado(1));
         model.addAttribute("barberos", barberoService.listarTodos());
@@ -232,22 +244,5 @@ public class NavigationController {
         model.addAttribute("perfilesSinAdmin", perfilesSinAdmin);
         model.addAttribute("usuarioLogueado", authentication.getName());
         return "usuarios-lista";
-    }
-
-    // ── Perfiles/Roles ───────────────────────────────────────
-    @GetMapping("/admin/perfiles")
-    public String gestionPerfiles(Model model) {
-        model.addAttribute("perfiles", perfilService.listarTodo());
-        model.addAttribute("todosLosPermisos", perfilService.listarPermisos());
-        return "perfiles-lista";
-    }
-
-    @PostMapping("/admin/perfiles/guardar-permisos")
-    public String guardarPermisos(@RequestParam("perfilId") Long perfilId,
-            @RequestParam(value = "permisoIds", required = false) List<Long> permisoIds) {
-        if (permisoIds == null)
-            permisoIds = new ArrayList<>();
-        perfilService.guardarPerfilConPermisos(perfilId, permisoIds);
-        return "redirect:/admin/perfiles?success";
     }
 }

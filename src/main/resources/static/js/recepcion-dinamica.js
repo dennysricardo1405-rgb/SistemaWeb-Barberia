@@ -150,10 +150,24 @@ function abrirModalGestionar(id, nombre) {
     modalGestionar.show();
 }
 
+let serviciosEnUsoSilla = [];
+
 function cargarConsumosDeSilla(barberoId) {
     fetch(`/secretario/recepcion/api-consumos/${barberoId}`)
         .then(r => r.json())
         .then(data => {
+            serviciosEnUsoSilla = [];
+            if (data.servicio && data.servicio.id) {
+                serviciosEnUsoSilla.push(String(data.servicio.id));
+            }
+            if (data.consumos) {
+                data.consumos.forEach(c => {
+                    if (c.tipo === 'SERVICIO' && c.servicioId) {
+                        serviciosEnUsoSilla.push(String(c.servicioId));
+                    }
+                });
+            }
+
             // Jalamos directamente los precios estructurados que envía el backend
             const precioFinal = data.servicio ? Number(data.servicio.precio) : 0;
             const precioOriginal = data.servicio ? Number(data.servicio.precioOriginal) : precioFinal;
@@ -185,12 +199,14 @@ function cargarConsumosDeSilla(barberoId) {
                     columnaSubtotalHtml = `<span class="text-success fw-bold">S/ ${precioOriginal.toFixed(2)}</span>`;
                 }
 
+                const esPromo = precioFinal < precioOriginal;
                 tbody.innerHTML += `
                 <tr style="border-left:3px solid #c9a84c;">
                     <td>
                         <i class="fa-solid fa-scissors me-1 text-warning small"></i>
                         <span class="fw-bold text-warning">${data.servicio.nombre}</span>
-                        <span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">SERVICIO</span>
+                        <span class="badge bg-secondary ms-1" style="font-size:0.6rem;">SERVICIO</span>
+                        ${esPromo ? '<span class="badge bg-warning text-dark ms-1 fw-bold" style="font-size:0.65rem;"><i class="fa-solid fa-tag me-1"></i>PROMO</span>' : ''}
                     </td>
                     <td class="text-center">1</td>
                     <td class="text-end">S/ ${precioOriginal.toFixed(2)}</td>
@@ -199,17 +215,28 @@ function cargarConsumosDeSilla(barberoId) {
                 </tr>`;
             }
 
-            // Renderizado de productos consumidos existentes
+            // Renderizado de consumos existentes (Productos y Servicios Adicionales)
             if (!data.consumos || data.consumos.length === 0) {
-                tbody.innerHTML += `<tr><td colspan="5" class="text-center text-muted py-2 small"><i class="fa-solid fa-box-open me-1"></i>Sin productos agregados aún</td></tr>`;
+                tbody.innerHTML += `<tr><td colspan="5" class="text-center text-muted py-2 small"><i class="fa-solid fa-box-open me-1"></i>Sin consumos o productos adicionales</td></tr>`;
             } else {
                 data.consumos.forEach(c => {
+                    const esServicioExtra = c.tipo === 'SERVICIO';
+                    const badgeTipoHtml = esServicioExtra 
+                        ? `<span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;">SERVICIO EXTRA</span>`
+                        : `<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">PRODUCTO</span>`;
+
+                    const icono = esServicioExtra ? 'fa-scissors text-warning' : 'fa-box text-muted';
+
                     tbody.innerHTML += `
                 <tr>
-                    <td><i class="fa-solid fa-box me-1 text-muted small"></i>${c.descripcion}</td>
+                    <td>
+                        <i class="fa-solid ${icono} me-1 small"></i>
+                        <span class="${esServicioExtra ? 'fw-bold text-white' : ''}">${c.descripcion}</span>
+                        ${badgeTipoHtml}
+                    </td>
                     <td class="text-center">${c.cantidad}</td>
                     <td class="text-end">S/ ${Number(c.precioUnit).toFixed(2)}</td>
-                    <td class="text-end text-success fw-bold">S/ ${Number(c.subtotal).toFixed(2)}</td>
+                    <td class="text-end ${esServicioExtra ? 'text-warning' : 'text-success'} fw-bold">S/ ${Number(c.subtotal).toFixed(2)}</td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="quitarConsumoDeSilla(${c.id}, ${barberoId})">
                             <i class="fa-solid fa-xmark"></i>
@@ -273,6 +300,92 @@ function quitarConsumoDeSilla(consumoId, barberoId) {
 function filtrarProductos(texto) {
     document.querySelectorAll('.fila-producto').forEach(fila => {
         fila.style.display = fila.dataset.nombre.toLowerCase().includes(texto.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function abrirModalAgregarServicios() {
+    document.querySelectorAll('.tarjeta-servicio-modal').forEach(tarjeta => {
+        const id = String(tarjeta.dataset.id || '');
+        if (serviciosEnUsoSilla.includes(id)) {
+            tarjeta.style.display = 'none';
+        } else {
+            tarjeta.style.display = '';
+        }
+    });
+    const modalEl = document.getElementById('modalAgregarServicio');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function abrirModalAgregarProductos() {
+    const modalEl = document.getElementById('modalAgregarProducto');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function agregarServicioDirecto(servicioId) {
+    const barberoId = document.getElementById('consumoBarberoId').value;
+    fetch(`/secretario/recepcion/api-consumos/agregar-servicio?barberoId=${barberoId}&servicioId=${servicioId}`, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': getCsrf() }
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                mostrarToast('error', 'Error', data.error);
+                return;
+            }
+            cargarConsumosDeSilla(barberoId);
+            mostrarToast('exito', 'Servicio agregado a la silla', '');
+            const modalEl = document.getElementById('modalAgregarServicio');
+            if (modalEl) {
+                const m = bootstrap.Modal.getInstance(modalEl);
+                if (m) m.hide();
+            }
+        })
+        .catch(err => mostrarToast('error', 'Error', err.message));
+}
+
+function agregarProductoModalDirecto(productoId) {
+    const barberoId = document.getElementById('consumoBarberoId').value;
+    const cantInput = document.getElementById(`cantModal-${productoId}`);
+    const cantidad = parseInt(cantInput?.value) || 1;
+
+    fetch(`/secretario/recepcion/api-consumos/agregar?barberoId=${barberoId}&productoId=${productoId}&cantidad=${cantidad}`, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': getCsrf() }
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                mostrarToast('error', 'Stock insuficiente', data.error);
+                return;
+            }
+            if (cantInput) cantInput.value = 1;
+            cargarConsumosDeSilla(barberoId);
+            mostrarToast('exito', 'Producto agregado', '');
+            const modalEl = document.getElementById('modalAgregarProducto');
+            if (modalEl) {
+                const m = bootstrap.Modal.getInstance(modalEl);
+                if (m) m.hide();
+            }
+        })
+        .catch(err => mostrarToast('error', 'Error', err.message));
+}
+
+function filtrarServiciosModal(texto) {
+    document.querySelectorAll('.tarjeta-servicio-modal').forEach(tarjeta => {
+        tarjeta.style.display = tarjeta.dataset.nombre.toLowerCase().includes(texto.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function filtrarProductosModal(texto) {
+    document.querySelectorAll('.tarjeta-producto-modal').forEach(tarjeta => {
+        tarjeta.style.display = tarjeta.dataset.nombre.toLowerCase().includes(texto.toLowerCase()) ? '' : 'none';
     });
 }
 

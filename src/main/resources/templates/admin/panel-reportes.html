@@ -55,8 +55,9 @@
         <div class="container-fluid p-0">
 
             <div class="mb-4">
-                <h2 class="fw-bold m-0 text-white" style="font-family: 'Barlow Condensed', sans-serif;">
-                    <i class="fa-solid fa-cash-register text-primary me-2"></i> MOTOR DE AUDITORÍA FISCAL MULTICRITERIO
+                <h2 class="fw-bold m-0" style="font-family: 'Barlow Condensed', sans-serif; color:#ff6b2b;">
+                    <i class="fa-solid fa-cash-register me-2" style="color:#ff6b2b;"></i> MOTOR DE AUDITORÍA FISCAL
+                    MULTICRITERIO
                 </h2>
                 <p class="text-muted m-0 small mt-1">Filtre y concilie flujos de caja cruzando canales de venta y
                     pasarelas de pago.</p>
@@ -68,9 +69,12 @@
                         <label class="form-label">Tipo de Flujo *</label>
                         <select name="tipoOperacion" class="form-select" required>
                             <option value="" th:selected="${tipoOperacion == null}">[ Seleccione ]</option>
-                            <option value="TODOS" th:selected="${tipoOperacion == 'TODOS'}">Todo (Ingresos y Egresos)</option>
-                            <option value="SERVICIOS" th:selected="${tipoOperacion == 'SERVICIOS'}">Servicios (Citas en Silla)</option>
-                            <option value="PRODUCTOS" th:selected="${tipoOperacion == 'PRODUCTOS'}">Venta de Productos</option>
+                            <option value="TODOS" th:selected="${tipoOperacion == 'TODOS'}">Todo (Ingresos y Egresos)
+                            </option>
+                            <option value="SERVICIOS" th:selected="${tipoOperacion == 'SERVICIOS'}">Servicios (Citas en
+                                Silla)</option>
+                            <option value="PRODUCTOS" th:selected="${tipoOperacion == 'PRODUCTOS'}">Venta de Productos
+                            </option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -86,7 +90,8 @@
                         <select name="origen" class="form-select">
                             <option value="TODOS" th:selected="${origen == 'TODOS'}">Todos</option>
                             <option value="WEB" th:selected="${origen == 'WEB'}">Reserva Web (Ecommerce)</option>
-                            <option value="PRESENCIAL" th:selected="${origen == 'PRESENCIAL'}">Presencial (En Local)</option>
+                            <option value="PRESENCIAL" th:selected="${origen == 'PRESENCIAL'}">Presencial (En Local)
+                            </option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -141,13 +146,15 @@
                 <div class="col-md-4">
                     <div class="card stat-card p-4 border-start border-4 border-success">
                         <h6 class="text-uppercase m-0">Total Ingresos</h6>
-                        <h2 class="text-success fw-bold m-0 mt-2" th:text="'S/ ' + ${#numbers.formatDecimal(totalIngresos, 1, 2)}">S/ 0.00</h2>
+                        <h2 class="text-success fw-bold m-0 mt-2"
+                            th:text="'S/ ' + ${#numbers.formatDecimal(totalIngresos, 1, 2)}">S/ 0.00</h2>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card stat-card p-4 border-start border-4 border-danger">
                         <h6 class="text-uppercase m-0">Total Egresos</h6>
-                        <h2 class="text-danger fw-bold m-0 mt-2" th:text="'S/ ' + ${#numbers.formatDecimal(totalEgresos, 1, 2)}">S/ 0.00</h2>
+                        <h2 class="text-danger fw-bold m-0 mt-2"
+                            th:text="'S/ ' + ${#numbers.formatDecimal(totalEgresos, 1, 2)}">S/ 0.00</h2>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -159,17 +166,19 @@
                 </div>
             </div>
 
-            <form th:if="${tipoOperacion == 'TODOS'}" th:action="@{/admin/reportes/gasto}" method="POST" class="card p-3 mb-4 border-0">
+            <form th:if="${tipoOperacion == 'TODOS'}" th:action="@{/admin/reportes/gasto}" method="POST"
+                class="card p-3 mb-4 border-0">
                 <div class="row g-2 align-items-end">
                     <input type="hidden" name="tipoOperacion" value="TODOS">
                     <input type="hidden" name="fechaInicio" th:value="${fechaInicio}">
                     <input type="hidden" name="fechaFin" th:value="${fechaFin}">
                     <input type="hidden" name="origen" th:value="${origen}">
                     <input type="hidden" name="metodoPago" th:value="${metodoPago}">
-                    
+
                     <div class="col-md-5">
                         <label class="form-label">Descripción del Egreso</label>
-                        <input type="text" name="descripcion" class="form-control" placeholder="Ej: Pago de luz, alquiler local..." required>
+                        <input type="text" name="descripcion" class="form-control"
+                            placeholder="Ej: Pago de luz, alquiler local..." required>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Monto (S/)</label>
@@ -204,14 +213,14 @@
                                 <th>Fecha</th>
                                 <th>Tipo de Pago</th>
                                 <th class="text-end">Monto Cobrado</th>
-                                <th class="text-center">Acción</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr th:each="c : ${citasFiltradas}">
                                 <td class="ps-2">
                                     <span th:if="${c.origen == 'NOTA_VENTA'}" class="badge bg-success">Presencial</span>
-                                    <span th:if="${c.origen == 'RESERVA_WEB'}" class="badge bg-primary">Reserva Web</span>
+                                    <span th:if="${c.origen == 'RESERVA_WEB'}" class="badge bg-primary">Reserva
+                                        Web</span>
                                 </td>
                                 <td class="font-monospace text-primary"
                                     th:text="${c.origen == 'NOTA_VENTA'} ? '#NV-' + ${c.id} : '#SRV-' + ${c.id}"></td>
@@ -221,19 +230,15 @@
                                 <td th:text="${c.barbero}"></td>
                                 <td th:text="${c.fecha}"></td>
                                 <td>
-                                    <span th:if="${c.montoEfectivo > 0 && c.montoYape > 0}" class="badge bg-danger">Mixto</span>
-                                    <span th:if="${c.montoEfectivo > 0 && c.montoYape == 0}" class="badge bg-success">Efectivo</span>
-                                    <span th:if="${c.montoYape > 0 && c.montoEfectivo == 0}" class="badge bg-info">Yape</span>
+                                    <span th:if="${c.montoEfectivo > 0 && c.montoYape > 0}"
+                                        class="badge bg-danger">Mixto</span>
+                                    <span th:if="${c.montoEfectivo > 0 && c.montoYape == 0}"
+                                        class="badge bg-success">Efectivo</span>
+                                    <span th:if="${c.montoYape > 0 && c.montoEfectivo == 0}"
+                                        class="badge bg-info">Yape</span>
                                 </td>
                                 <td class="text-end font-monospace fw-bold text-white"
                                     th:text="'S/ ' + ${#numbers.formatDecimal(c.totalPrecio, 1, 2)}"></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3"
-                                        th:data-efec="${c.montoEfectivo}" th:data-yp="${c.montoYape}"
-                                        th:data-tot="${c.totalPrecio}" onclick="verDetalleOperacion(this)">
-                                        <i class="fa-solid fa-eye me-1"></i> Ver Detalle
-                                    </button>
-                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -255,7 +260,8 @@
                                 <td class="ps-2 font-monospace text-muted small"
                                     th:text="${p.fecha != null ? p.fecha : '---'}"></td>
                                 <td>
-                                    <span th:if="${p.canal == 'PRESENCIAL'}" class="badge bg-success">Tienda Física</span>
+                                    <span th:if="${p.canal == 'PRESENCIAL'}" class="badge bg-success">Tienda
+                                        Física</span>
                                     <span th:if="${p.canal == 'WEB'}" class="badge bg-primary">Ecommerce Web</span>
                                 </td>
                                 <td><span th:text="${p.cliente}" class="fw-bold text-white"></span></td>
@@ -267,7 +273,8 @@
                         </tbody>
                     </table>
 
-                    <table th:if="${tipoOperacion == 'TODOS'}" id="tablaTodos" class="table table-hover align-middle mb-0 w-100">
+                    <table th:if="${tipoOperacion == 'TODOS'}" id="tablaTodos"
+                        class="table table-hover align-middle mb-0 w-100">
                         <thead>
                             <tr>
                                 <th class="ps-2">Fecha</th>
@@ -281,14 +288,16 @@
                             <tr th:each="m : ${movimientos}">
                                 <td class="ps-2 font-monospace text-muted small" th:text="${m.fecha}"></td>
                                 <td>
-                                    <span th:if="${m.tipoMovimiento == 'INGRESO'}" class="badge bg-success">Ingreso</span>
+                                    <span th:if="${m.tipoMovimiento == 'INGRESO'}"
+                                        class="badge bg-success">Ingreso</span>
                                     <span th:if="${m.tipoMovimiento == 'EGRESO'}" class="badge bg-danger">Egreso</span>
                                 </td>
                                 <td th:text="${m.categoria}" class="text-white"></td>
                                 <td th:text="${m.descripcion}"></td>
                                 <td class="text-end pe-2 fw-bold font-monospace"
                                     th:classappend="${m.tipoMovimiento == 'INGRESO'} ? 'text-success' : 'text-danger'"
-                                    th:text="(${m.tipoMovimiento == 'INGRESO'} ? '+ S/ ' : '- S/ ') + ${#numbers.formatDecimal(m.monto, 1, 2)}"></td>
+                                    th:text="(${m.tipoMovimiento == 'INGRESO'} ? '+ S/ ' : '- S/ ') + ${#numbers.formatDecimal(m.monto, 1, 2)}">
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -312,7 +321,8 @@
                         <span class="text-muted">Monto en Efectivo Físico:</span>
                         <span id="detEfec" class="font-monospace fw-bold text-success">S/ 0.00</span>
                     </div>
-                    <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-2 mt-2">
+                    <div
+                        class="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-2 mt-2">
                         <span class="text-muted">Monto en Yape / Banca Celular:</span>
                         <span id="detYp" class="font-monospace fw-bold text-info">S/ 0.00</span>
                     </div>

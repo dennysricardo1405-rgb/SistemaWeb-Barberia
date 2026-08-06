@@ -2,15 +2,19 @@
 
 :root {
     --sidebar-width: 265px;
-    --bg-dark: #1a1a1a;
-    --bg-card: #242424;
-    --bg-hover: #2e2e2e;
+    --bg-dark: #161616;
+    --bg-card: #202020;
+    --bg-hover: #2a2a2a;
     --accent: #ff6b2b;
-    --accent-hover: #e85a1a;
-    --accent-soft: rgba(255, 107, 43, 0.12);
-    --text-primary: #f0f0f0;
-    --text-muted: rgba(255, 255, 255, 0.45);
-    --border: rgba(255, 255, 255, 0.07);
+    --accent-hover: #ff8547;
+    --accent-soft: rgba(255, 107, 43, 0.15);
+    --gold: #c9a84c;
+    --gold-light: #e8c96a;
+    --gold-border: rgba(201, 168, 76, 0.25);
+    --naranja: #ff6b2b;
+    --text-primary: #f0ece0;
+    --text-muted: rgba(240, 236, 224, 0.55);
+    --border: rgba(255, 255, 255, 0.08);
     --success: #2ecc71;
     --danger: #e74c3c;
 }
@@ -92,13 +96,13 @@ body {
 }
 
 .nav-link.active {
-    color: white;
-    background-color: var(--accent);
+    color: #fff !important;
+    background-color: var(--accent) !important;
     font-weight: 600;
 }
 
 .nav-link.active i {
-    color: white;
+    color: #fff !important;
 }
 
 .nav-link.text-danger {
@@ -213,14 +217,12 @@ body {
 .table {
     --bs-table-bg: transparent;
     --bs-table-color: var(--text-primary);
-    /* Fuerza a Bootstrap a usar tu color blanco */
     color: var(--text-primary);
 }
 
 .table thead th {
     background-color: #1e1e1e !important;
     color: var(--text-muted) !important;
-    /* Evita que Bootstrap lo ponga negro */
     border-color: var(--border) !important;
     font-size: 0.75rem;
     letter-spacing: 0.8px;
@@ -239,25 +241,67 @@ body {
 .table td {
     border-color: var(--border) !important;
     color: var(--text-primary) !important;
-    /* Asegura que el texto de las filas sea blanco */
 }
 
 .table-light {
     background-color: #1e1e1e !important;
     --bs-table-color: var(--text-muted);
-    /* Corrige el texto oscuro nativo de table-light */
 }
 
 /* ── BOTONES ─────────────────────────────────────── */
-.btn-primary {
+.btn-primary,
+.btn-naranja {
     background-color: var(--accent) !important;
     border-color: var(--accent) !important;
+    color: #fff !important;
     font-weight: 600;
 }
 
-.btn-primary:hover {
+.btn-primary:hover,
+.btn-naranja:hover {
     background-color: var(--accent-hover) !important;
     border-color: var(--accent-hover) !important;
+    color: #fff !important;
+}
+
+.btn-gold {
+    background-color: var(--gold) !important;
+    border-color: var(--gold) !important;
+    color: #0d0d0d !important;
+    font-weight: 600;
+}
+
+.btn-gold:hover {
+    background-color: var(--gold-light) !important;
+    border-color: var(--gold-light) !important;
+}
+
+.btn-outline-gold {
+    color: var(--gold) !important;
+    border-color: var(--gold) !important;
+}
+
+.btn-outline-gold:hover {
+    background-color: var(--gold) !important;
+    color: #0d0d0d !important;
+}
+
+.btn-outline-primary {
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--accent) !important;
+    color: #fff !important;
+}
+
+.text-gold {
+    color: var(--gold) !important;
+}
+
+.text-naranja {
+    color: var(--naranja) !important;
 }
 
 .btn-outline-warning {

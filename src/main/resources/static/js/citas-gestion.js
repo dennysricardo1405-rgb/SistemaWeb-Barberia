@@ -17,7 +17,9 @@ function getCsrf() {
 function abrirModalConfirmacion(button) {
     const id = button.getAttribute('data-id');
     const totalServicio = parseFloat(button.getAttribute('data-total')) || 0;
-    
+    const precioOriginal = parseFloat(button.getAttribute('data-precio-original')) || 0;
+    const esPromo = button.getAttribute('data-es-promo') === 'true';
+
     const fila = document.getElementById('fila-' + id);
     const imgElement = fila ? fila.querySelector('.comprobante-thumb') : null;
 
@@ -25,6 +27,20 @@ function abrirModalConfirmacion(button) {
     
     if (document.getElementById('txtTotalServicio')) {
         document.getElementById('txtTotalServicio').innerText = totalServicio.toFixed(2);
+    }
+
+    const tagPromo = document.getElementById('tagPromoAplicada');
+    const txtOriginal = document.getElementById('txtPrecioOriginalModal');
+
+    if (esPromo) {
+        if (tagPromo) tagPromo.style.display = 'inline-block';
+        if (txtOriginal) {
+            txtOriginal.style.display = 'inline';
+            txtOriginal.innerText = 'S/ ' + precioOriginal.toFixed(2);
+        }
+    } else {
+        if (tagPromo) tagPromo.style.display = 'none';
+        if (txtOriginal) txtOriginal.style.display = 'none';
     }
     
     const txtCodigo = document.getElementById('txtCodigoDetectado');

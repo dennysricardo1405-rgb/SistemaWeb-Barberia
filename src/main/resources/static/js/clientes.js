@@ -28,6 +28,21 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ── Limpiar entrada de usuario en el correo (@gmail.com predeterminado) ──
+    const correoInput = document.getElementById('correoInput');
+    if (correoInput) {
+        correoInput.addEventListener('input', function () {
+            this.value = this.value.replace(/@.*$/, '').replace(/\s+/g, '');
+        });
+    }
+
+    const editCorreoPrefix = document.getElementById('edit-correo-prefix');
+    if (editCorreoPrefix) {
+        editCorreoPrefix.addEventListener('input', function () {
+            this.value = this.value.replace(/@.*$/, '').replace(/\s+/g, '');
+        });
+    }
+
     // ── Buscar DNI ───────────────────────────────────────────
     const btnBuscarDni = document.getElementById('btnBuscarDni');
     if (btnBuscarDni) {
@@ -40,12 +55,21 @@ document.addEventListener('DOMContentLoaded', function () {
         btnGuardarCliente.addEventListener('click', guardarCliente);
     }
 
+    const formNuevoCliente = document.getElementById('form-nuevo-cliente');
+    if (formNuevoCliente) {
+        formNuevoCliente.addEventListener('submit', function (e) {
+            e.preventDefault();
+            guardarCliente();
+        });
+    }
+
     // ── Paginación ───────────────────────────────────────────
     const selectSize = document.getElementById('select-size-pages');
     if (selectSize) {
         selectSize.addEventListener('change', function () {
             const currentSearch = document.getElementById('current-search').value || '';
-            window.location.href = `/admin/cliente?page=0&size=${this.value}&search=${encodeURIComponent(currentSearch)}`;
+            const baseUrl = window.location.pathname;
+            window.location.href = `${baseUrl}?page=0&size=${this.value}&search=${encodeURIComponent(currentSearch)}`;
         });
     }
 
@@ -86,6 +110,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('modalEditar')?.addEventListener('hidden.bs.modal', () => {
         limpiarErrores('form-editar');
+        const editPrefix = document.getElementById('edit-correo-prefix');
+        if (editPrefix) editPrefix.value = '';
+        document.getElementById('edit-correo').value = '';
         document.getElementById('edit-nueva-password').value    = '';
         document.getElementById('edit-confirmar-password').value = '';
     });
@@ -148,9 +175,9 @@ function validarFormularioNuevo() {
         mostrarError(telefono, 'El teléfono debe tener exactamente 9 dígitos.');
         valido = false;
     }
-    const correoVal = correo.value.trim();
-    if (correoVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoVal)) {
-        mostrarError(correo, 'Ingresa un correo electrónico válido.');
+    const correoPrefix = correo.value.trim().replace(/@.*$/, '');
+    if (correoPrefix && !/^[a-zA-Z0-9._%+-]+$/.test(correoPrefix)) {
+        mostrarError(correo, 'Ingresa un nombre de usuario de correo válido.');
         valido = false;
     }
 
@@ -163,7 +190,8 @@ function validarFormularioEditar() {
     let valido = true;
 
     const telefono         = document.getElementById('edit-telefono');
-    const correo           = document.getElementById('edit-correo');
+    const correoPrefixEl   = document.getElementById('edit-correo-prefix');
+    const correoHidden     = document.getElementById('edit-correo');
     const nuevaPassword    = document.getElementById('edit-nueva-password');
     const confirmarPassword= document.getElementById('edit-confirmar-password');
 
@@ -174,10 +202,14 @@ function validarFormularioEditar() {
     }
 
     // Correo: opcional, si se llena formato válido
-    const correoVal = correo.value.trim();
-    if (correoVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoVal)) {
-        mostrarError(correo, 'Ingresa un correo electrónico válido.');
+    const prefixVal = correoPrefixEl ? correoPrefixEl.value.trim().replace(/@.*$/, '') : '';
+    if (prefixVal && !/^[a-zA-Z0-9._%+-]+$/.test(prefixVal)) {
+        mostrarError(correoPrefixEl, 'Ingresa un nombre de usuario de correo válido.');
         valido = false;
+    }
+
+    if (valido && correoHidden) {
+        correoHidden.value = prefixVal ? (prefixVal + '@gmail.com') : '';
     }
 
     // Contraseña: opcional, si se llena validar longitud y coincidencia
@@ -210,9 +242,6 @@ async function buscarDni() {
     const btn      = document.getElementById('btnBuscarDni');
     const dni      = dniInput.value.trim();
 
-    document.getElementById('nombresInput').value   = '';
-    document.getElementById('apellidosInput').value = '';
-
     if (!/^\d{8}$/.test(dni)) {
         mostrarError(dniInput, 'El DNI debe tener exactamente 8 dígitos numéricos.');
         return;
@@ -225,17 +254,17 @@ async function buscarDni() {
         const response = await fetch(`/api/clientes/consulta-dni/${dni}`);
         const data     = await response.json();
 
-        if (data.success) {
-            document.getElementById('nombresInput').value   = data.datos.nombres;
-            document.getElementById('apellidosInput').value = data.datos.ape_paterno + ' ' + data.datos.ape_materno;
+        if (data.success && data.datos) {
+            document.getElementById('nombresInput').value   = data.datos.nombres || '';
+            document.getElementById('apellidosInput').value = ((data.datos.ape_paterno || '') + ' ' + (data.datos.ape_materno || '')).trim();
             dniInput.classList.add('is-valid');
             dniInput.classList.remove('is-invalid');
             dniInput.parentNode.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
         } else {
-            mostrarError(dniInput, 'No se encontró información para ese DNI.');
+            mostrarError(dniInput, 'No se encontró información en RENIEC. Puedes ingresar los nombres manualmente.');
         }
     } catch (error) {
-        mostrarError(dniInput, 'Problema al conectar con el servicio de DNI.');
+        mostrarError(dniInput, 'Problema al consultar RENIEC. Puedes ingresar los nombres manualmente.');
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
         btn.disabled  = false;
@@ -250,18 +279,29 @@ async function guardarCliente() {
     btnGuardar.disabled = true;
     btnGuardar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-2"></i>Guardando...';
 
+    const correoRaw = document.getElementById('correoInput').value.trim().replace(/@.*$/, '');
+    const correoFinal = correoRaw ? (correoRaw + '@gmail.com') : '';
+
     const datos = {
         dni:       document.getElementById('dniInput').value.trim(),
         nombres:   document.getElementById('nombresInput').value.trim(),
         apellidos: document.getElementById('apellidosInput').value.trim(),
         telefono:  document.getElementById('telefonoInput').value.trim(),
-        correo:    document.getElementById('correoInput').value.trim()
+        correo:    correoFinal
     };
 
     try {
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+
         const res  = await fetch('/api/clientes/guardar-rapido', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body:    JSON.stringify(datos)
         });
         const data = await res.json();
@@ -278,7 +318,7 @@ async function guardarCliente() {
         alert('Error de conexión.');
     } finally {
         btnGuardar.disabled = false;
-        btnGuardar.innerHTML = 'Registrar Cliente';
+        btnGuardar.innerHTML = '<i class="fa-solid fa-user-plus me-1"></i> Registrar Cliente';
     }
 }
 
@@ -291,18 +331,41 @@ function prepararEdicionCliente(btn) {
     const telefono  = btn.getAttribute('data-telefono');
     const correo    = btn.getAttribute('data-correo');
 
-    document.getElementById('edit-dni').value       = dni;
-    document.getElementById('edit-nombres').value   = nombres;
-    document.getElementById('edit-apellidos').value = apellidos;
+    document.getElementById('edit-dni').value       = dni || '';
+    document.getElementById('edit-nombres').value   = nombres || '';
+    document.getElementById('edit-apellidos').value = apellidos || '';
     document.getElementById('edit-telefono').value  = (telefono === '—' || !telefono) ? '' : telefono;
-    document.getElementById('edit-correo').value    = (correo === '—' || !correo) ? '' : correo;
+    
+    let correoPrefix = '';
+    if (correo && correo !== '—') {
+        correoPrefix = correo.replace(/@.*$/, '');
+    }
+    const editCorreoPrefixEl = document.getElementById('edit-correo-prefix');
+    if (editCorreoPrefixEl) editCorreoPrefixEl.value = correoPrefix;
+    document.getElementById('edit-correo').value = (correo === '—' || !correo) ? '' : correo;
 
     // Limpiar campos de contraseña al abrir
     document.getElementById('edit-nueva-password').value     = '';
     document.getElementById('edit-confirmar-password').value = '';
 
-    document.getElementById('form-editar').action = `/admin/cliente/actualizar/${id}`;
+    const baseUrl = window.location.pathname.startsWith('/secretario') ? '/secretario/cliente' : '/admin/cliente';
+    document.getElementById('form-editar').action = `${baseUrl}/actualizar/${id}`;
 
     limpiarErrores('form-editar');
-    new bootstrap.Modal(document.getElementById('modalEditar')).show();
+    const modalEl = document.getElementById('modalEditar');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
 }
+
+function abrirModalNuevo() {
+    const modalEl = document.getElementById('modalNuevo');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+window.prepararEdicionCliente = prepararEdicionCliente;
+window.abrirModalNuevo = abrirModalNuevo;

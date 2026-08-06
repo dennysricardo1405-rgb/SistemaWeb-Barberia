@@ -36,6 +36,17 @@ public class Cliente {
     @CreationTimestamp
     @Column(name = "fecha_registro", updatable = false)
     private LocalDateTime fechaRegistro;
+
+    @Transient
+    private int totalVisitas;
+
+    public int getTotalVisitas() {
+        return totalVisitas;
+    }
+
+    public void setTotalVisitas(int totalVisitas) {
+        this.totalVisitas = totalVisitas;
+    }
  
     public Cliente() {}
 }

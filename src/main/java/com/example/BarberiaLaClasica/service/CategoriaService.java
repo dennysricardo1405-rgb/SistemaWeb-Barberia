@@ -17,6 +17,10 @@ public class CategoriaService {
         return categoriaRepository.findAll();
     }
 
+    public org.springframework.data.domain.Page<Categoria> listarTodasPaginadas(org.springframework.data.domain.Pageable pageable) {
+        return categoriaRepository.findAll(pageable);
+    }
+
     public List<Categoria> listarPrincipalesActivas() {
         return categoriaRepository.findByPadreIsNullAndActivoTrue();
     }

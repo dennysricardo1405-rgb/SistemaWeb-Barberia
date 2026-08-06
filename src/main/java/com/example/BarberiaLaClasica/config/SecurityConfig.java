@@ -43,9 +43,10 @@ public class SecurityConfig {
 
                         // 2. ✅ APIs internas compartidas
                         .requestMatchers("/api/clientes/**").hasAnyRole("ADMINISTRADOR", "SECRETARIO")
+                        .requestMatchers("/api/ventas-productos/**", "/secretario/ventas-productos/**", "/secretario/api/ventas-productos/**").hasAnyRole("ADMINISTRADOR", "SECRETARIO")
 
                         // 3. 🆕 Mantenimiento compartido de clientes
-                        .requestMatchers("/admin/clientes/**", "/admin/clientes")
+                        .requestMatchers("/admin/cliente/**", "/admin/cliente")
                         .hasAnyRole("ADMINISTRADOR", "SECRETARIO")
 
                         // 4. 🔒 CONTROL DE PRODUCTOS: Permite al secretario consumir la data para las

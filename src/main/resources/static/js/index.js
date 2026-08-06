@@ -106,13 +106,16 @@ function actualizarContadorCarrito(total) {
 }
 
 
-// Cargar contador al iniciar
+// Cargar contador y renderizar carrito al iniciar
 document.addEventListener('DOMContentLoaded', async () => {
+    renderCarrito();
     if (!ES_CLIENTE) return;
     try {
         const res = await fetch('/api/carrito/count');
         const data = await res.json();
-        actualizarContadorCarrito(data.totalItems);
+        if (data && typeof data.totalItems === 'number' && data.totalItems > 0) {
+            actualizarContadorNavbar(data.totalItems);
+        }
     } catch { }
 });
 
@@ -228,9 +231,15 @@ function eliminarItem(idx) {
 
 function actualizarContadorNavbar(count) {
     const badge = document.getElementById('carritoCount');
-    if (!badge) return;
-    badge.textContent = count;
-    badge.style.display = count > 0 ? 'flex' : 'none';
+    const badgeAnon = document.getElementById('carritoCountAnon');
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'flex' : 'none';
+    }
+    if (badgeAnon) {
+        badgeAnon.textContent = count;
+        badgeAnon.style.display = count > 0 ? 'flex' : 'none';
+    }
 }
 
 async function agregarAlCarrito(productoId, stock) {
@@ -302,8 +311,9 @@ function mostrarToast(mensaje, color = '#c9a84c') {
 // ── Filtro subcategoría ───────────────────────────────────
 function filtrarSubcategoria(nombre, event) {
     document.querySelectorAll('.item-producto-tarjeta').forEach(item => {
+        const itemSubcat = item.dataset.subcategoria || '';
         item.style.display =
-            (nombre === 'TODOS' || item.dataset.subcategoria === nombre) ? '' : 'none';
+            (nombre === 'TODOS' || itemSubcat.trim().toLowerCase() === nombre.trim().toLowerCase()) ? '' : 'none';
     });
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active');

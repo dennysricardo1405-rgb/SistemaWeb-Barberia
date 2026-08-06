@@ -393,52 +393,19 @@
                                 </div>
                             </div>
 
-                            <!-- Productos -->
+                            <!-- Adiciones: Servicios y Productos -->
                             <h6 class="fw-bold text-uppercase small text-warning mb-2">
-                                <i class="fa-solid fa-boxes-stacked me-1"></i> Añadir Productos
+                                <i class="fa-solid fa-plus-circle me-1"></i> Agregar a la Cuenta
                             </h6>
-                            <div class="mb-2">
-                                <input type="text" id="buscadorProducto"
-                                    class="form-control form-control-sm bg-dark border-secondary text-white"
-                                    placeholder="🔍 Buscar producto..." oninput="filtrarProductos(this.value)">
-                            </div>
-                            <div class="tabla-productos-scroll">
-                                <table class="table table-dark table-striped table-hover align-middle mb-0 small">
-                                    <thead class="table-secondary text-dark text-uppercase font-monospace"
-                                        style="font-size:0.72rem; position:sticky; top:0; z-index:10;">
-                                        <tr>
-                                            <th>Producto</th>
-                                            <th class="text-center">Stock</th>
-                                            <th class="text-end">Precio</th>
-                                            <th class="text-center">Cant.</th>
-                                            <th class="text-center">Acción</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablaProductos">
-                                        <tr th:each="prod : ${productos}" class="fila-producto"
-                                            th:data-nombre="${prod.nombre}">
-                                            <td class="fw-bold text-white" th:text="${prod.nombre}"></td>
-                                            <td class="text-center font-monospace" th:text="${prod.stock}"></td>
-
-                                            <td class="text-end text-gold font-monospace fw-semibold"
-                                                th:text="'S/ ' + ${#numbers.formatDecimal(promoHelper.calcularPrecioProducto(prod), 1, 2)}">
-                                            </td>
-
-                                            <td class="text-center" style="width:75px;">
-                                                <input type="number" th:id="'cant-' + ${prod.id}"
-                                                    class="form-control form-control-sm bg-dark border-secondary text-white text-center p-1"
-                                                    value="1" min="1">
-                                            </td>
-                                            <td class="text-center">
-                                                <button type="button"
-                                                    class="btn btn-sm btn-warning text-dark py-1 px-2 fw-bold rounded-pill"
-                                                    th:attr="onclick='agregarProductoDirecto(\'' + ${prod.id} + '\')'">
-                                                    <i class="fa-solid fa-plus small"></i> Elegir
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <div class="d-flex gap-2 mb-3">
+                                <button type="button" class="btn btn-warning text-dark fw-bold btn-sm py-2 px-3 flex-fill rounded-pill"
+                                    onclick="abrirModalAgregarServicios()">
+                                    <i class="fa-solid fa-scissors me-1"></i> + Agregar Servicio Extra
+                                </button>
+                                <button type="button" class="btn btn-outline-warning text-white fw-bold btn-sm py-2 px-3 flex-fill rounded-pill"
+                                    onclick="abrirModalAgregarProductos()">
+                                    <i class="fa-solid fa-box-open me-1"></i> + Agregar Producto
+                                </button>
                             </div>
                         </div>
 
@@ -619,6 +586,93 @@
                     </button>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         MODAL: AGREGAR SERVICIO EXTRA A LA SILLA
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="modalAgregarServicio" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 text-white" style="background:#121212; border: 1px solid rgba(201,168,76,0.3) !important;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-warning">
+                        <i class="fa-solid fa-scissors me-2"></i> Seleccionar Servicio Adicional
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <input type="text" class="form-control bg-dark text-white border-secondary rounded-pill px-3"
+                            placeholder="🔍 Buscar servicio por nombre..." oninput="filtrarServiciosModal(this.value)">
+                    </div>
+                    <div class="row g-3" id="contenedorServiciosModal">
+                        <div th:each="ser : ${servicios}" class="col-md-6 tarjeta-servicio-modal" th:data-id="${ser.id}" th:data-nombre="${ser.nombre}">
+                            <div class="p-3 rounded-3 bg-dark border border-secondary border-opacity-25 h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <span class="fw-bold text-white fs-6" th:text="${ser.nombre}"></span>
+                                        <span class="badge bg-secondary text-white font-monospace"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(ser.precio, 1, 2)}"></span>
+                                    </div>
+                                    <small class="text-muted d-block mb-2" th:text="${ser.descripcion ?: 'Servicio profesional de barbería'}"></small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-warning w-100 rounded-pill fw-bold mt-2"
+                                    th:attr="onclick='agregarServicioDirecto(\'' + ${ser.id} + '\')'">
+                                    <i class="fa-solid fa-plus me-1"></i> Añadir a la Silla
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         MODAL: AGREGAR PRODUCTO A LA SILLA
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="modalAgregarProducto" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 text-white" style="background:#121212; border: 1px solid rgba(201,168,76,0.3) !important;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold text-warning">
+                        <i class="fa-solid fa-box-open me-2"></i> Catálogo de Productos
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <input type="text" class="form-control bg-dark text-white border-secondary rounded-pill px-3"
+                            placeholder="🔍 Buscar producto..." oninput="filtrarProductosModal(this.value)">
+                    </div>
+                    <div class="row g-3" id="contenedorProductosModal">
+                        <div th:each="prod : ${productos}" class="col-md-6 tarjeta-producto-modal" th:data-nombre="${prod.nombre}">
+                            <div class="p-3 rounded-3 bg-dark border border-secondary border-opacity-25 h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <span class="fw-bold text-white fs-6" th:text="${prod.nombre}"></span>
+                                        <span class="badge bg-secondary text-white font-monospace"
+                                            th:text="'S/ ' + ${#numbers.formatDecimal(prod.precioVenta, 1, 2)}"></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between small text-muted mb-2">
+                                        <span>Categoría: <strong class="text-white" th:text="${prod.categoria != null ? prod.categoria.nombre : 'General'}"></strong></span>
+                                        <span>Stock: <strong class="text-warning" th:text="${prod.stock}"></strong></span>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <input type="number" th:id="'cantModal-' + ${prod.id}" class="form-control form-control-sm bg-dark text-white border-secondary text-center"
+                                        style="width: 70px;" value="1" min="1">
+                                    <button type="button" class="btn btn-sm btn-warning text-dark flex-fill rounded-pill fw-bold"
+                                        th:attr="onclick='agregarProductoModalDirecto(\'' + ${prod.id} + '\')'">
+                                        <i class="fa-solid fa-plus me-1"></i> Añadir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
