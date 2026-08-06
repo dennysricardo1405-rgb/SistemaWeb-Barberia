@@ -39,6 +39,8 @@ public class CitaReservaController {
     private com.example.BarberiaLaClasica.service.ClienteService clienteService;
     @Autowired
     private PromocionHelper promocionHelper;
+    @Autowired
+    private ConfiguracionSitioService configuracionSitioService;
 
     // ─────────────────────────────────────────────────────────────────
     // PASO 1-3: Asistente público (sin login requerido)
